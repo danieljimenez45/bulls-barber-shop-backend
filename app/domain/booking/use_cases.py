@@ -1,22 +1,36 @@
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 
 from app.domain.booking.entity import Booking
-from app.domain.booking.ports import BookingNotFound, IBookingRepository, SlotOcupado
+from app.domain.booking.ports import (
+    BookingNotFound,
+    IBookingNotifier,
+    IBookingRepository,
+    SlotOcupado,
+)
 
 
 class CreateBookingUseCase:
-    def __init__(self, repo: IBookingRepository) -> None:
+    def __init__(
+        self,
+        repo: IBookingRepository,
+        notifier: Optional[IBookingNotifier] = None,
+    ) -> None:
         self._repo = repo
+        self._notifier = notifier
 
     def execute(self, booking: Booking) -> Booking:
-        """Crea la reserva si el slot está libre; lanza SlotOcupado si no."""
+        """Crea la reserva si el slot está libre; lanza SlotOcupado si no.
+        Tras crear, dispara la notificación si hay notifier configurado."""
         if not self._repo.is_slot_available(booking.fecha_hora):
             raise SlotOcupado(
                 f"El horario {booking.fecha_hora.strftime('%d/%m/%Y a las %H:%M')} "
                 "ya está reservado. Por favor elige otro horario."
             )
-        return self._repo.create(booking)
+        created = self._repo.create(booking)
+        if self._notifier:
+            self._notifier.notify_new_booking(created)
+        return created
 
 
 class GetBookingUseCase:
@@ -78,5 +92,5 @@ class GetDisponibilidadUseCase:
     def __init__(self, repo: IBookingRepository) -> None:
         self._repo = repo
 
-    def execute(self, fecha: date) -> List[date]:
+    def execute(self, fecha: date) -> List[datetime]:
         return self._repo.get_slots_ocupados(fecha)

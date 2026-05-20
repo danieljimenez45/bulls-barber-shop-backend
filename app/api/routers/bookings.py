@@ -23,6 +23,7 @@ from app.domain.booking.use_cases import (
     ListBookingsUseCase,
     UpdateBookingUseCase,
 )
+from app.infrastructure.notifications.booking_notifier import SMTPBookingNotifier
 from app.infrastructure.persistence.repositories.booking import (
     SQLAlchemyBookingRepository,
 )
@@ -66,7 +67,8 @@ def crear_reserva(data: BookingCreate, db: Session = Depends(get_db)):
         notas=data.notas,
     )
     repo = SQLAlchemyBookingRepository(db)
-    uc = CreateBookingUseCase(repo)
+    notifier = SMTPBookingNotifier()
+    uc = CreateBookingUseCase(repo, notifier)
     try:
         created = uc.execute(booking)
         return BookingOut.model_validate(created)

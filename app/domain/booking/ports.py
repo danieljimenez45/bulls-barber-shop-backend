@@ -13,6 +13,14 @@ class SlotOcupado(Exception):
     """El slot fecha+hora ya tiene una cita activa (no cancelada)."""
 
 
+class IBookingNotifier(ABC):
+    """Puerto de notificación: se llama tras crear una reserva."""
+
+    @abstractmethod
+    def notify_new_booking(self, booking: "Booking") -> None:
+        """Notifica al cliente y/o al admin sobre la nueva reserva."""
+
+
 class IBookingRepository(ABC):
 
     @abstractmethod

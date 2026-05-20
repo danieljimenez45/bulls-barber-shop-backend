@@ -2,14 +2,15 @@ from fastapi import APIRouter
 
 from app.api.schemas.contact import ContactMessageIn
 from app.domain.contact.entity import ContactMessage
-from app.domain.contact.use_cases import LogContactNotifier, SendContactMessageUseCase
+from app.domain.contact.use_cases import SendContactMessageUseCase
+from app.infrastructure.notifications.contact_notifier import SMTPContactNotifier
 
 router = APIRouter()
 
 
 @router.post("/")
 def enviar_mensaje(data: ContactMessageIn):
-    """Recibe un mensaje de contacto y lo registra en el log."""
+    """Recibe un mensaje de contacto y lo reenvía al barbero por email."""
     message = ContactMessage(
         nombre=data.nombre,
         email=data.email,
@@ -17,7 +18,7 @@ def enviar_mensaje(data: ContactMessageIn):
         asunto=data.asunto,
         mensaje=data.mensaje,
     )
-    notifier = LogContactNotifier()
+    notifier = SMTPContactNotifier()
     uc = SendContactMessageUseCase(notifier)
     uc.execute(message)
     return {

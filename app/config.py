@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = ""
+    ADMIN_EMAIL: str = ""  # Email de Jonathan — recibe avisos de nuevas reservas y contactos
 
     class Config:
         env_file = ".env"
