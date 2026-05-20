@@ -24,7 +24,13 @@ def get_db():
 
 def create_tables():
     """Crea todas las tablas al arrancar la app."""
-    # Importamos los modelos para que SQLAlchemy los registre
-    from app.models import service, booking, review, gallery  # noqa: F401
+    # Importamos los ORM models para que SQLAlchemy los registre en la metadata
+    from app.infrastructure.persistence.orm import (  # noqa: F401
+        booking,
+        gallery,
+        review,
+        service,
+        user,
+    )
 
     Base.metadata.create_all(bind=engine)

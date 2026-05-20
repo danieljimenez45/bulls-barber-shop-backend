@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import create_tables
-from app.routers import bookings, contact, gallery, reviews, services
+from app.api.routers import admin, auth, bookings, contact, gallery, reviews, services
 
 app = FastAPI(
     title="Bulls Barber Shop API",
@@ -28,6 +28,8 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ── Rutas ─────────────────────────────────────────────────────────────────────
+app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(services.router, prefix="/api/services", tags=["Servicios"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["Reservas"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["Reseñas"])

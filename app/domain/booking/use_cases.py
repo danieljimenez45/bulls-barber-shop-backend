@@ -1,0 +1,82 @@
+from datetime import date
+from typing import List, Optional
+
+from app.domain.booking.entity import Booking
+from app.domain.booking.ports import BookingNotFound, IBookingRepository, SlotOcupado
+
+
+class CreateBookingUseCase:
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(self, booking: Booking) -> Booking:
+        """Crea la reserva si el slot está libre; lanza SlotOcupado si no."""
+        if not self._repo.is_slot_available(booking.fecha_hora):
+            raise SlotOcupado(
+                f"El horario {booking.fecha_hora.strftime('%d/%m/%Y a las %H:%M')} "
+                "ya está reservado. Por favor elige otro horario."
+            )
+        return self._repo.create(booking)
+
+
+class GetBookingUseCase:
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(self, booking_id: int) -> Booking:
+        booking = self._repo.get_by_id(booking_id)
+        if not booking:
+            raise BookingNotFound(f"Reserva {booking_id} no encontrada")
+        return booking
+
+
+class ListBookingsUseCase:
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(self, estado: Optional[str] = None) -> List[Booking]:
+        return self._repo.list(estado=estado)
+
+
+class UpdateBookingUseCase:
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(
+        self,
+        booking_id: int,
+        estado: Optional[str] = None,
+        notas: Optional[str] = None,
+        barbero: Optional[str] = None,
+    ) -> Booking:
+        booking = self._repo.get_by_id(booking_id)
+        if not booking:
+            raise BookingNotFound(f"Reserva {booking_id} no encontrada")
+        if estado is not None:
+            booking.cambiar_estado(estado)  # valida en la entidad
+        if notas is not None:
+            booking.notas = notas
+        if barbero is not None:
+            booking.barbero = barbero
+        return self._repo.update(booking)
+
+
+class CancelBookingUseCase:
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(self, booking_id: int) -> None:
+        booking = self._repo.get_by_id(booking_id)
+        if not booking:
+            raise BookingNotFound(f"Reserva {booking_id} no encontrada")
+        self._repo.delete(booking_id)
+
+
+class GetDisponibilidadUseCase:
+    """Devuelve los slots ocupados en una fecha para que el frontend los deshabilite."""
+
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(self, fecha: date) -> List[date]:
+        return self._repo.get_slots_ocupados(fecha)

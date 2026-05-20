@@ -9,8 +9,10 @@ class Settings(BaseSettings):
     # Base de datos (SQLite para dev, PostgreSQL para producción)
     DATABASE_URL: str = "sqlite:///./bulls_barbershop.db"
 
-    # Seguridad
+    # Seguridad — JWT
     SECRET_KEY: str = "changeme-secret-key-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 h (adecuado para tablet en barbería)
 
     # CORS — orígenes permitidos
     CORS_ORIGINS: List[str] = [
