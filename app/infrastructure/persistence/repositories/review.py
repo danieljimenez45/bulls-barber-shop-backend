@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.domain.review.entity import Review
@@ -44,14 +45,25 @@ class SQLAlchemyReviewRepository(IReviewRepository):
         )
         return self._to_entity(orm) if orm else None
 
-    def list(self, solo_visibles: bool = True) -> List[Review]:
+    def list(
+        self,
+        solo_visibles: bool = True,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[Review]:
         query = self._session.query(ReviewORM)
         if solo_visibles:
             query = query.filter(ReviewORM.visible == True)  # noqa: E712
-        return [
-            self._to_entity(o)
-            for o in query.order_by(ReviewORM.created_at.desc()).all()
-        ]
+        query = query.order_by(ReviewORM.created_at.desc()).offset(skip)
+        if limit is not None:
+            query = query.limit(limit)
+        return [self._to_entity(o) for o in query.all()]
+
+    def count(self, solo_visibles: bool = True) -> int:
+        query = self._session.query(func.count(ReviewORM.id))
+        if solo_visibles:
+            query = query.filter(ReviewORM.visible == True)  # noqa: E712
+        return query.scalar() or 0
 
     def update(self, review: Review) -> Review:
         orm = (

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from app.domain.booking.entity import Booking
 from app.domain.booking.ports import (
@@ -48,8 +48,15 @@ class ListBookingsUseCase:
     def __init__(self, repo: IBookingRepository) -> None:
         self._repo = repo
 
-    def execute(self, estado: Optional[str] = None) -> List[Booking]:
-        return self._repo.list(estado=estado)
+    def execute(
+        self,
+        estado: Optional[str] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> Tuple[List[Booking], int]:
+        items = self._repo.list(estado=estado, skip=skip, limit=limit)
+        total = self._repo.count(estado=estado)
+        return items, total
 
 
 class UpdateBookingUseCase:

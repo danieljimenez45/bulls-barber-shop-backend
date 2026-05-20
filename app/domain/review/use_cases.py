@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Tuple
 
 from app.domain.review.entity import Review
 from app.domain.review.ports import IReviewRepository, ReviewNotFound
@@ -16,8 +16,15 @@ class ListReviewsUseCase:
     def __init__(self, repo: IReviewRepository) -> None:
         self._repo = repo
 
-    def execute(self, solo_visibles: bool = True) -> List[Review]:
-        return self._repo.list(solo_visibles=solo_visibles)
+    def execute(
+        self,
+        solo_visibles: bool = True,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> Tuple[List[Review], int]:
+        items = self._repo.list(solo_visibles=solo_visibles, skip=skip, limit=limit)
+        total = self._repo.count(solo_visibles=solo_visibles)
+        return items, total
 
 
 class ToggleVisibilityUseCase:

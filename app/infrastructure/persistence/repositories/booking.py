@@ -58,14 +58,25 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         )
         return self._to_entity(orm) if orm else None
 
-    def list(self, estado: Optional[str] = None) -> List[Booking]:
+    def list(
+        self,
+        estado: Optional[str] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[Booking]:
         query = self._session.query(BookingORM)
         if estado:
             query = query.filter(BookingORM.estado == estado)
-        return [
-            self._to_entity(o)
-            for o in query.order_by(BookingORM.fecha_hora).all()
-        ]
+        query = query.order_by(BookingORM.fecha_hora.desc()).offset(skip)
+        if limit is not None:
+            query = query.limit(limit)
+        return [self._to_entity(o) for o in query.all()]
+
+    def count(self, estado: Optional[str] = None) -> int:
+        query = self._session.query(func.count(BookingORM.id))
+        if estado:
+            query = query.filter(BookingORM.estado == estado)
+        return query.scalar() or 0
 
     def update(self, booking: Booking) -> Booking:
         orm = (
