@@ -30,7 +30,15 @@ class IBookingRepository(ABC):
     def get_by_id(self, booking_id: int) -> Optional[Booking]: ...
 
     @abstractmethod
-    def list(self, estado: Optional[str] = None) -> List[Booking]: ...
+    def list(
+        self,
+        estado: Optional[str] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[Booking]: ...
+
+    @abstractmethod
+    def count(self, estado: Optional[str] = None) -> int: ...
 
     @abstractmethod
     def update(self, booking: Booking) -> Booking: ...

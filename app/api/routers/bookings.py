@@ -1,16 +1,18 @@
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
+from app.api.dependencies.pagination import PaginationParams
 from app.api.schemas.booking import (
     BookingCreate,
     BookingOut,
     BookingUpdate,
     DisponibilidadOut,
 )
+from app.api.schemas.pagination import PagedResponse
 from app.database import get_db
 from app.domain.auth.entity import AdminUser
 from app.domain.booking.entity import Booking
@@ -79,17 +81,24 @@ def crear_reserva(data: BookingCreate, db: Session = Depends(get_db)):
 # ── Protegidos (solo admin) ────────────────────────────────────────────────────
 
 
-@router.get("/", response_model=List[BookingOut])
+@router.get("/", response_model=PagedResponse[BookingOut])
 def listar_reservas(
     estado: Optional[str] = None,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     _admin: AdminUser = Depends(get_current_admin),
 ):
-    """Lista todas las reservas. Solo accesible para el admin."""
+    """Lista reservas paginadas. Solo accesible para el admin."""
     repo = SQLAlchemyBookingRepository(db)
     uc = ListBookingsUseCase(repo)
-    bookings = uc.execute(estado=estado)
-    return [BookingOut.model_validate(b) for b in bookings]
+    items, total = uc.execute(estado=estado, skip=pagination.skip, limit=pagination.limit)
+    return PagedResponse(
+        items=[BookingOut.model_validate(b) for b in items],
+        total=total,
+        page=pagination.page,
+        size=pagination.size,
+        pages=pagination.total_pages(total),
+    )
 
 
 @router.get("/{booking_id}", response_model=BookingOut)

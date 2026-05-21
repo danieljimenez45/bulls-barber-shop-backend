@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.domain.gallery.entity import GalleryImage
@@ -47,16 +48,29 @@ class SQLAlchemyGalleryRepository(IGalleryRepository):
         )
         return self._to_entity(orm) if orm else None
 
-    def list(self, categoria: Optional[str] = None) -> List[GalleryImage]:
+    def list(
+        self,
+        categoria: Optional[str] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[GalleryImage]:
         query = self._session.query(GalleryORM).filter(
             GalleryORM.visible == True  # noqa: E712
         )
         if categoria:
             query = query.filter(GalleryORM.categoria == categoria)
-        return [
-            self._to_entity(o)
-            for o in query.order_by(GalleryORM.orden, GalleryORM.created_at.desc()).all()
-        ]
+        query = query.order_by(GalleryORM.orden, GalleryORM.created_at.desc()).offset(skip)
+        if limit is not None:
+            query = query.limit(limit)
+        return [self._to_entity(o) for o in query.all()]
+
+    def count(self, categoria: Optional[str] = None) -> int:
+        query = self._session.query(func.count(GalleryORM.id)).filter(
+            GalleryORM.visible == True  # noqa: E712
+        )
+        if categoria:
+            query = query.filter(GalleryORM.categoria == categoria)
+        return query.scalar() or 0
 
     def delete(self, image_id: int) -> None:
         orm = (

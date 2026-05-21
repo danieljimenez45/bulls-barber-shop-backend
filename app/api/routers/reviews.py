@@ -1,9 +1,9 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
+from app.api.dependencies.pagination import PaginationParams
+from app.api.schemas.pagination import PagedResponse
 from app.api.schemas.review import ReviewCreate, ReviewOut
 from app.database import get_db
 from app.domain.auth.entity import AdminUser
@@ -25,16 +25,23 @@ router = APIRouter()
 # ── Públicos ───────────────────────────────────────────────────────────────────
 
 
-@router.get("/", response_model=List[ReviewOut])
+@router.get("/", response_model=PagedResponse[ReviewOut])
 def listar_resenas(
     solo_visibles: bool = True,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
 ):
-    """Lista reseñas visibles (público) o todas (admin pasa solo_visibles=false)."""
+    """Lista reseñas paginadas. Público (solo_visibles=true) o admin (solo_visibles=false)."""
     repo = SQLAlchemyReviewRepository(db)
     uc = ListReviewsUseCase(repo)
-    reviews = uc.execute(solo_visibles=solo_visibles)
-    return [ReviewOut.model_validate(r) for r in reviews]
+    items, total = uc.execute(solo_visibles=solo_visibles, skip=pagination.skip, limit=pagination.limit)
+    return PagedResponse(
+        items=[ReviewOut.model_validate(r) for r in items],
+        total=total,
+        page=pagination.page,
+        size=pagination.size,
+        pages=pagination.total_pages(total),
+    )
 
 
 @router.post("/", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)

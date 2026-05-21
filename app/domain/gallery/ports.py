@@ -17,7 +17,15 @@ class IGalleryRepository(ABC):
     def get_by_id(self, image_id: int) -> Optional[GalleryImage]: ...
 
     @abstractmethod
-    def list(self, categoria: Optional[str] = None) -> List[GalleryImage]: ...
+    def list(
+        self,
+        categoria: Optional[str] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[GalleryImage]: ...
+
+    @abstractmethod
+    def count(self, categoria: Optional[str] = None) -> int: ...
 
     @abstractmethod
     def delete(self, image_id: int) -> None: ...

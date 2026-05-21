@@ -17,7 +17,15 @@ class IReviewRepository(ABC):
     def get_by_id(self, review_id: int) -> Optional[Review]: ...
 
     @abstractmethod
-    def list(self, solo_visibles: bool = True) -> List[Review]: ...
+    def list(
+        self,
+        solo_visibles: bool = True,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[Review]: ...
+
+    @abstractmethod
+    def count(self, solo_visibles: bool = True) -> int: ...
 
     @abstractmethod
     def update(self, review: Review) -> Review: ...

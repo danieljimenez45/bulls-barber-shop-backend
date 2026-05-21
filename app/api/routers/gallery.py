@@ -1,10 +1,12 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
+from app.api.dependencies.pagination import PaginationParams
 from app.api.schemas.gallery import GalleryImageOut
+from app.api.schemas.pagination import PagedResponse
 from app.database import get_db
 from app.domain.auth.entity import AdminUser
 from app.domain.gallery.ports import ImageNotFound
@@ -24,16 +26,23 @@ router = APIRouter()
 # ── Públicos ───────────────────────────────────────────────────────────────────
 
 
-@router.get("/", response_model=List[GalleryImageOut])
+@router.get("/", response_model=PagedResponse[GalleryImageOut])
 def listar_imagenes(
     categoria: Optional[str] = None,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
 ):
-    """Lista imágenes visibles de la galería."""
+    """Lista imágenes visibles de la galería, paginadas."""
     repo = SQLAlchemyGalleryRepository(db)
     uc = ListImagesUseCase(repo)
-    images = uc.execute(categoria=categoria)
-    return [GalleryImageOut.model_validate(img) for img in images]
+    items, total = uc.execute(categoria=categoria, skip=pagination.skip, limit=pagination.limit)
+    return PagedResponse(
+        items=[GalleryImageOut.model_validate(img) for img in items],
+        total=total,
+        page=pagination.page,
+        size=pagination.size,
+        pages=pagination.total_pages(total),
+    )
 
 
 # ── Protegidos (solo admin) ────────────────────────────────────────────────────
