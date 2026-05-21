@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Dominio de producción (se añade automáticamente a CORS_ORIGINS en prod)
     PRODUCTION_DOMAIN: str = ""
 
+    # Rate limiting — se puede deshabilitar en dev poniendo RATE_LIMIT_ENABLED=false
+    RATE_LIMIT_ENABLED: bool = True
+
     # Email (para notificaciones de reservas — opcional)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

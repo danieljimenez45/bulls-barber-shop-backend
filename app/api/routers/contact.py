@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.schemas.contact import ContactMessageIn
+from app.core.rate_limit import limiter
 from app.domain.contact.entity import ContactMessage
 from app.domain.contact.use_cases import SendContactMessageUseCase
 from app.infrastructure.notifications.contact_notifier import SMTPContactNotifier
@@ -9,7 +10,10 @@ router = APIRouter()
 
 
 @router.post("/")
-def enviar_mensaje(data: ContactMessageIn):
+def enviar_mensaje(
+    data: ContactMessageIn,
+    _rl: None = Depends(limiter(max_requests=5, window_seconds=60)),
+):
     """Recibe un mensaje de contacto y lo reenvía al barbero por email."""
     message = ContactMessage(
         nombre=data.nombre,
