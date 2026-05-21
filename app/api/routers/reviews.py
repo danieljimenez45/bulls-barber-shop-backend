@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
 from app.api.dependencies.pagination import PaginationParams
+from app.core.rate_limit import limiter
 from app.api.schemas.pagination import PagedResponse
 from app.api.schemas.review import ReviewCreate, ReviewOut
 from app.database import get_db
@@ -45,7 +46,11 @@ def listar_resenas(
 
 
 @router.post("/", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)
-def crear_resena(data: ReviewCreate, db: Session = Depends(get_db)):
+def crear_resena(
+    data: ReviewCreate,
+    db: Session = Depends(get_db),
+    _rl: None = Depends(limiter(max_requests=5, window_seconds=60)),
+):
     """Crea una reseña (acceso público — cualquier cliente puede dejar una)."""
     review = Review(
         nombre=data.nombre,

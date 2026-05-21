@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
 from app.api.dependencies.pagination import PaginationParams
+from app.core.rate_limit import limiter
 from app.api.schemas.booking import (
     BookingCreate,
     BookingOut,
@@ -40,6 +41,7 @@ router = APIRouter()
 def get_disponibilidad(
     fecha: date = Query(..., description="Fecha en formato YYYY-MM-DD"),
     db: Session = Depends(get_db),
+    _rl: None = Depends(limiter(max_requests=30, window_seconds=60)),
 ):
     """
     Devuelve los slots ya ocupados en una fecha dada.
@@ -53,7 +55,11 @@ def get_disponibilidad(
 
 
 @router.post("/", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
-def crear_reserva(data: BookingCreate, db: Session = Depends(get_db)):
+def crear_reserva(
+    data: BookingCreate,
+    db: Session = Depends(get_db),
+    _rl: None = Depends(limiter(max_requests=10, window_seconds=60)),
+):
     """
     Crea una reserva (acceso público — el cliente la solicita desde la web).
     Devuelve 409 si ya existe una cita activa en esa fecha+hora.
