@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
@@ -55,8 +55,8 @@ def listar_imagenes(
 )
 async def subir_imagen(
     file: UploadFile = File(...),
-    titulo: Optional[str] = None,
-    categoria: str = "corte",
+    titulo: Optional[str] = Form(None),
+    categoria: str = Form("corte"),
     db: Session = Depends(get_db),
     _admin: AdminUser = Depends(get_current_admin),
 ):

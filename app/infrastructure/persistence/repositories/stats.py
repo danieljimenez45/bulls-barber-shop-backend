@@ -69,6 +69,7 @@ class SQLAlchemyStatsRepository(IStatsRepository):
         servicio haya sido eliminado (en ese caso suma 0)."""
         result = (
             self._session.query(func.coalesce(func.sum(ServiceORM.precio), 0.0))
+            .select_from(BookingORM)
             .join(ServiceORM, BookingORM.servicio_id == ServiceORM.id, isouter=True)
             .filter(
                 BookingORM.estado.in_(["confirmada", "completada"]),

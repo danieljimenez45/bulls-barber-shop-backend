@@ -108,3 +108,79 @@ class TestListarReservasAdmin:
         data = resp.json()
         assert len(data["items"]) <= 2
         assert data["size"] == 2
+
+
+# ── GET /api/bookings/{id} (admin) ────────────────────────────────────────────
+
+class TestObtenerReservaAdmin:
+    def test_obtiene_reserva_por_id(self, client, admin_token):
+        r = client.post("/api/bookings/", json=_booking_payload())
+        booking_id = r.json()["id"]
+        resp = client.get(
+            f"/api/bookings/{booking_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["id"] == booking_id
+
+    def test_id_inexistente_devuelve_404(self, client, admin_token):
+        resp = client.get(
+            "/api/bookings/9999",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_sin_token_devuelve_401(self, client):
+        resp = client.get("/api/bookings/1")
+        assert resp.status_code == 401
+
+
+# ── PATCH /api/bookings/{id} (admin) ─────────────────────────────────────────
+
+class TestActualizarReserva:
+    def test_actualiza_estado(self, client, admin_token):
+        r = client.post("/api/bookings/", json=_booking_payload())
+        booking_id = r.json()["id"]
+        resp = client.patch(
+            f"/api/bookings/{booking_id}",
+            json={"estado": "confirmada"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["estado"] == "confirmada"
+
+    def test_id_inexistente_devuelve_404(self, client, admin_token):
+        resp = client.patch(
+            "/api/bookings/9999",
+            json={"estado": "confirmada"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_sin_token_devuelve_401(self, client):
+        resp = client.patch("/api/bookings/1", json={"estado": "confirmada"})
+        assert resp.status_code == 401
+
+
+# ── DELETE /api/bookings/{id} (admin) ────────────────────────────────────────
+
+class TestCancelarReserva:
+    def test_cancela_reserva(self, client, admin_token):
+        r = client.post("/api/bookings/", json=_booking_payload())
+        booking_id = r.json()["id"]
+        resp = client.delete(
+            f"/api/bookings/{booking_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 204
+
+    def test_id_inexistente_devuelve_404(self, client, admin_token):
+        resp = client.delete(
+            "/api/bookings/9999",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_sin_token_devuelve_401(self, client):
+        resp = client.delete("/api/bookings/1")
+        assert resp.status_code == 401

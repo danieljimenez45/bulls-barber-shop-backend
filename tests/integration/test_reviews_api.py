@@ -81,3 +81,45 @@ class TestVisibilidadResena:
         )
         resp = client.get("/api/reviews/")
         assert resp.json()["total"] == 0
+
+    def test_visibilidad_id_inexistente_devuelve_404(self, client, admin_token):
+        resp = client.patch(
+            "/api/reviews/9999/visibilidad",
+            params={"visible": False},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+
+class TestEliminarResena:
+    def test_eliminar_requiere_admin(self, client):
+        r = client.post("/api/reviews/", json=_review_payload())
+        review_id = r.json()["id"]
+        resp = client.delete(f"/api/reviews/{review_id}")
+        assert resp.status_code == 401
+
+    def test_eliminar_con_token(self, client, admin_token):
+        r = client.post("/api/reviews/", json=_review_payload())
+        review_id = r.json()["id"]
+        resp = client.delete(
+            f"/api/reviews/{review_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 204
+
+    def test_eliminar_id_inexistente_devuelve_404(self, client, admin_token):
+        resp = client.delete(
+            "/api/reviews/9999",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_resena_eliminada_no_aparece_en_listado(self, client, admin_token):
+        r = client.post("/api/reviews/", json=_review_payload())
+        review_id = r.json()["id"]
+        client.delete(
+            f"/api/reviews/{review_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        resp = client.get("/api/reviews/")
+        assert resp.json()["total"] == 0

@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
@@ -21,6 +22,7 @@ TEST_DATABASE_URL = "sqlite:///:memory:"
 _engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 _TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
@@ -90,7 +92,8 @@ def admin_token(client):
     user = UserORM(email="test@admin.com", hashed_password=hashed, is_active=True)
     db.add(user)
     db.commit()
+    db.refresh(user)  # obtener el ID asignado por la BD
 
     jwt = JWTService()
-    token = jwt.create_token({"sub": "test@admin.com"})
+    token = jwt.create_token({"sub": str(user.id)})  # sub debe ser el ID numérico
     return token

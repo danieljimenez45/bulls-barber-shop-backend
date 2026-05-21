@@ -41,38 +41,35 @@ class TestLimiter:
         _store.clear()
 
     def test_permite_peticiones_dentro_del_limite(self):
+        import asyncio
         check = limiter(max_requests=3, window_seconds=60)
         req = _make_request()
-        import asyncio
         for _ in range(3):
-            asyncio.get_event_loop().run_until_complete(check(req))
+            asyncio.run(check(req))
 
     def test_bloquea_al_superar_limite(self):
+        import asyncio
         check = limiter(max_requests=2, window_seconds=60)
         req = _make_request()
-        import asyncio
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(check(req))
-        loop.run_until_complete(check(req))
+        asyncio.run(check(req))
+        asyncio.run(check(req))
         with pytest.raises(HTTPException) as exc_info:
-            loop.run_until_complete(check(req))
+            asyncio.run(check(req))
         assert exc_info.value.status_code == 429
         assert "Retry-After" in exc_info.value.headers
 
     def test_ips_distintas_tienen_contadores_independientes(self):
-        check = limiter(max_requests=1, window_seconds=60)
         import asyncio
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(check(_make_request(ip="1.1.1.1")))
-        loop.run_until_complete(check(_make_request(ip="2.2.2.2")))
+        check = limiter(max_requests=1, window_seconds=60)
+        asyncio.run(check(_make_request(ip="1.1.1.1")))
+        asyncio.run(check(_make_request(ip="2.2.2.2")))
 
     def test_deshabilitado_no_bloquea(self):
+        import asyncio
         import app.config as cfg
         cfg.settings.RATE_LIMIT_ENABLED = False
         check = limiter(max_requests=1, window_seconds=60)
         req = _make_request()
-        import asyncio
-        loop = asyncio.get_event_loop()
         for _ in range(10):
-            loop.run_until_complete(check(req))
+            asyncio.run(check(req))
         cfg.settings.RATE_LIMIT_ENABLED = True
