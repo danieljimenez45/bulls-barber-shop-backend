@@ -101,3 +101,21 @@ class GetDisponibilidadUseCase:
 
     def execute(self, fecha: date) -> List[datetime]:
         return self._repo.get_slots_ocupados(fecha)
+
+
+class ExportBookingsCSVUseCase:
+    """Recupera las reservas en un rango de fechas para exportarlas como CSV.
+
+    Responsabilidad única: consultar el repositorio y devolver la lista de
+    entidades de dominio. La serialización a CSV queda en la capa de API.
+    """
+
+    def __init__(self, repo: IBookingRepository) -> None:
+        self._repo = repo
+
+    def execute(self, desde: date, hasta: date) -> List[Booking]:
+        if hasta < desde:
+            raise ValueError(
+                f"El parámetro 'hasta' ({hasta}) debe ser mayor o igual que 'desde' ({desde})."
+            )
+        return self._repo.list_by_date_range(desde, hasta)

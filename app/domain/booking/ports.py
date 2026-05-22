@@ -54,3 +54,8 @@ class IBookingRepository(ABC):
     @abstractmethod
     def get_slots_ocupados(self, fecha: date) -> List[datetime]:
         """Devuelve las horas ocupadas (no canceladas) en la fecha dada."""
+
+    @abstractmethod
+    def list_by_date_range(self, desde: date, hasta: date) -> List[Booking]:
+        """Devuelve todas las reservas cuya fecha_hora cae en [desde, hasta] (ambos inclusive),
+        ordenadas por fecha_hora ascendente."""

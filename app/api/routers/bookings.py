@@ -1,7 +1,10 @@
+import csv
+import io
 from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
@@ -21,6 +24,7 @@ from app.domain.booking.ports import BookingNotFound, SlotOcupado
 from app.domain.booking.use_cases import (
     CancelBookingUseCase,
     CreateBookingUseCase,
+    ExportBookingsCSVUseCase,
     GetBookingUseCase,
     GetDisponibilidadUseCase,
     ListBookingsUseCase,
@@ -104,6 +108,50 @@ def listar_reservas(
         page=pagination.page,
         size=pagination.size,
         pages=pagination.total_pages(total),
+    )
+
+
+@router.get("/export", response_class=StreamingResponse)
+def exportar_reservas_csv(
+    desde: date = Query(..., description="Fecha inicio del rango (YYYY-MM-DD)"),
+    hasta: date = Query(..., description="Fecha fin del rango (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    _admin: AdminUser = Depends(get_current_admin),
+):
+    """
+    Descarga un CSV con todas las reservas en el rango [desde, hasta] (ambos inclusive).
+
+    Columnas: id, nombre_cliente, telefono, servicio, fecha_hora, estado, creada_en.
+    Solo accesible para el admin.
+    """
+    repo = SQLAlchemyBookingRepository(db)
+    uc = ExportBookingsCSVUseCase(repo)
+    try:
+        bookings = uc.execute(desde, hasta)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    # Construir el CSV en memoria
+    output = io.StringIO()
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(["id", "nombre_cliente", "telefono", "servicio", "fecha_hora", "estado", "creada_en"])
+    for b in bookings:
+        writer.writerow([
+            b.id,
+            b.nombre_cliente,
+            b.telefono,
+            b.servicio_nombre or "",
+            b.fecha_hora.strftime("%Y-%m-%d %H:%M"),
+            b.estado,
+            b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "",
+        ])
+
+    output.seek(0)
+    filename = f"reservas_{desde}_{hasta}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

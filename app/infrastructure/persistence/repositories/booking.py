@@ -131,3 +131,18 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             .all()
         )
         return [r.fecha_hora for r in rows]
+
+    def list_by_date_range(self, desde: date, hasta: date) -> List[Booking]:
+        """Devuelve todas las reservas en [desde 00:00, hasta 23:59:59], ordenadas por fecha_hora."""
+        inicio = datetime.combine(desde, datetime.min.time())
+        fin = datetime.combine(hasta, datetime.max.time())
+        rows = (
+            self._session.query(BookingORM)
+            .filter(
+                BookingORM.fecha_hora >= inicio,
+                BookingORM.fecha_hora <= fin,
+            )
+            .order_by(BookingORM.fecha_hora)
+            .all()
+        )
+        return [self._to_entity(o) for o in rows]
