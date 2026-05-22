@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.api.schemas.auth import LoginRequest, TokenResponse
+from app.api.schemas.auth import TokenResponse
 from app.database import get_db
 from app.domain.auth.ports import InvalidCredentials
 from app.domain.auth.use_cases import LoginUseCase
@@ -13,14 +14,21 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(data: LoginRequest, db: Session = Depends(get_db)):
-    """Autentica al admin y devuelve un JWT."""
+def login(
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    """
+    Autentica al admin y devuelve un JWT.
+    Recibe las credenciales como application/x-www-form-urlencoded (estándar OAuth2).
+    El campo 'username' contiene el email del administrador.
+    """
     try:
         user_repo = SQLAlchemyUserRepository(db)
         hasher = BcryptPasswordHasher()
         jwt_service = JWTService()
         uc = LoginUseCase(user_repo, hasher, jwt_service)
-        token = uc.execute(data.email, data.password)
+        token = uc.execute(form.username, form.password)
         return TokenResponse(access_token=token)
     except InvalidCredentials as exc:
         raise HTTPException(
