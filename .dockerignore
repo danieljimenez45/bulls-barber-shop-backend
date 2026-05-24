@@ -1,0 +1,24 @@
+# ── Entorno virtual ───────────────────────────────────────────────────────────
+venv/
+.venv/
+
+# ── Ficheros sensibles y locales ─────────────────────────────────────────────
+.env
+bulls_barbershop.db
+uploads/
+
+# ── Python bytecode ───────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+.pytest_cache/
+
+# ── Editores e IDEs ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Docker (no incluir en el contexto de build) ───────────────────────────────
+docker/

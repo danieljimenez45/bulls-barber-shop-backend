@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
@@ -61,12 +62,30 @@ async def startup_event():
     )
 
 
-# ── Endpoints básicos ─────────────────────────────────────────────────────────
-@app.get("/", tags=["Root"])
-def root():
-    return {"message": "Bulls Barber Shop API 🐂", "docs": "/docs"}
+# ── SPA — React compilado (solo cuando existe static_frontend/) ───────────────
+# En desarrollo (vite dev server) este directorio no existe → se ignora.
+# En producción (Docker) el Dockerfile copia el build de Vite aquí.
+_FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "static_frontend")
+
+if os.path.isdir(_FRONTEND_DIR):
+    # Activos estáticos con hash (JS, CSS, imágenes del build)
+    _assets_dir = os.path.join(_FRONTEND_DIR, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="spa-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        """
+        Catch-all para el cliente React.
+        Cualquier ruta no capturada por los routers de la API devuelve
+        index.html, permitiendo que React Router maneje la navegación
+        en el lado del cliente.
+        """
+        return FileResponse(os.path.join(_FRONTEND_DIR, "index.html"))
 
 
-@app.get("/health", tags=["Root"])
-def health_check():
-    return {"status": "ok"}
+# ── Endpoints básicos (solo en dev — en prod el SPA catch-all toma "/" ) ─────
+if not os.path.isdir(_FRONTEND_DIR):
+    @app.get("/", tags=["Root"])
+    def root():
+        return {"message": "Bulls Barber Shop API 🐂", "docs": "/docs"}

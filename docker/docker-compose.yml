@@ -1,0 +1,52 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# backend/docker/docker-compose.yml
+#
+# Despliega únicamente el servicio de la API (FastAPI + uvicorn).
+# El frontend es un repositorio independiente con su propio compose.
+#
+# Uso (desde la raíz del repo backend/):
+#   docker compose -f docker/docker-compose.yml up --build -d
+#
+# Primera vez con BD existente:
+#   docker compose -f docker/docker-compose.yml exec backend alembic stamp 0001
+#
+# Otros comandos:
+#   docker compose -f docker/docker-compose.yml logs -f
+#   docker compose -f docker/docker-compose.yml down
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  backend:
+    build:
+      # Contexto: raíz del repo backend/ (un nivel arriba de docker/)
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: bulls_backend
+    restart: unless-stopped
+
+    ports:
+      # Cambia el puerto host si el 8000 está ocupado: "8080:8000"
+      - "8000:8000"
+
+    env_file:
+      # Copia .env.example → .env y rellena los valores antes de levantar
+      - ../.env
+
+    volumes:
+      # Imágenes de galería subidas localmente.
+      # Con Cloudinary configurado este volumen queda vacío pero no interfiere.
+      - uploads_data:/app/uploads
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+# ── Volúmenes ─────────────────────────────────────────────────────────────────
+volumes:
+  uploads_data:
+    driver: local

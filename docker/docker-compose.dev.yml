@@ -1,0 +1,32 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# backend/docker/docker-compose.dev.yml — Entorno de desarrollo
+#
+# - Código montado como volumen: los cambios se reflejan sin reconstruir
+# - uvicorn con --reload: reinicia automáticamente al guardar un fichero
+# - Sin usuario restringido: más cómodo para depuración
+#
+# Uso (desde la raíz del repo backend/):
+#   docker compose -f docker/docker-compose.dev.yml up --build
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: dev           # usa el stage "dev" del Dockerfile
+    container_name: bulls_backend_dev
+    restart: "no"           # en dev no queremos restart automático
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - ../.env
+
+    volumes:
+      # Monta el código fuente: los cambios son inmediatos sin rebuild
+      - ..:/app
+      # Preserva el directorio de uploads dentro del contenedor
+      - uploads_dev:/app/uploads/gallery

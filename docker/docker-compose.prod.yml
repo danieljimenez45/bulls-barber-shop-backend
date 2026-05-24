@@ -1,0 +1,48 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# backend/docker/docker-compose.prod.yml — Entorno de producción
+#
+# - Imagen compilada: el código se copia durante el build, no hay volúmenes
+# - Sin --reload: más rendimiento y estabilidad
+# - Usuario sin privilegios (appuser) por seguridad
+# - Volumen persistente para imágenes de galería (si no usas Cloudinary)
+# - Healthcheck para que otros servicios esperen a que la API esté lista
+#
+# Uso (desde la raíz del repo backend/):
+#   docker compose -f docker/docker-compose.prod.yml up --build -d
+#
+# Primera vez con BD existente (marcar como ya migrada):
+#   docker compose -f docker/docker-compose.prod.yml exec backend alembic stamp 0001
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: prod          # usa el stage "prod" del Dockerfile
+    container_name: bulls_backend
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - ../.env
+
+    volumes:
+      # Imágenes subidas localmente (con Cloudinary esto queda vacío)
+      - uploads_data:/app/uploads
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+# ── Volúmenes ─────────────────────────────────────────────────────────────────
+volumes:
+  uploads_data:
+    driver: local
