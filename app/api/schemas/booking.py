@@ -33,6 +33,7 @@ class BookingOut(BaseModel):
     notas: Optional[str] = None
     estado: str
     created_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None  # B-22: None = activa, timestamp = soft-deleted
 
     model_config = {"from_attributes": True}
 

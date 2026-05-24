@@ -16,6 +16,8 @@ class Booking:
     notas: Optional[str] = None
     estado: str = "pendiente"
     created_at: Optional[datetime] = None
+    # B-22: soft-delete — None = activa, timestamp = eliminada
+    deleted_at: Optional[datetime] = None
 
     ESTADOS_VALIDOS = frozenset({"pendiente", "confirmada", "cancelada", "completada"})
 

@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.core.logging import RequestLoggingMiddleware, get_logger, setup_logging
 from app.database import create_tables
-from app.api.routers import admin, auth, bookings, contact, gallery, reviews, services
+from app.api.routers import admin, auth, bookings, contact, gallery, health, reviews, services
 
 # Inicializar logging antes de cualquier otra importación que pueda loggear
 setup_logging(debug=settings.DEBUG)
@@ -39,13 +39,14 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ── Rutas ─────────────────────────────────────────────────────────────────────
-app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(health.router,   prefix="/api/health",   tags=["Health"])
+app.include_router(auth.router,     prefix="/api/auth",     tags=["Autenticación"])
+app.include_router(admin.router,    prefix="/api/admin",    tags=["Admin"])
 app.include_router(services.router, prefix="/api/services", tags=["Servicios"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["Reservas"])
-app.include_router(reviews.router, prefix="/api/reviews", tags=["Reseñas"])
-app.include_router(gallery.router, prefix="/api/gallery", tags=["Galería"])
-app.include_router(contact.router, prefix="/api/contact", tags=["Contacto"])
+app.include_router(reviews.router,  prefix="/api/reviews",  tags=["Reseñas"])
+app.include_router(gallery.router,  prefix="/api/gallery",  tags=["Galería"])
+app.include_router(contact.router,  prefix="/api/contact",  tags=["Contacto"])
 
 
 # ── Eventos ───────────────────────────────────────────────────────────────────

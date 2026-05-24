@@ -27,6 +27,7 @@ def create_tables():
     # Importamos los ORM models para que SQLAlchemy los registre en la metadata
     from app.infrastructure.persistence.orm import (  # noqa: F401
         booking,
+        contact,   # B-24: mensajes de contacto
         gallery,
         review,
         service,
