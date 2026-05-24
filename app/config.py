@@ -39,6 +39,24 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = ""
     ADMIN_EMAIL: str = ""
 
+    # Cloudinary — almacenamiento de imágenes en la nube (B-26)
+    # Si los tres valores están configurados se usa Cloudinary.
+    # Si alguno está vacío, se usa el almacenamiento local (dev).
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+    # Carpeta dentro de tu cuenta Cloudinary donde se organizarán las imágenes
+    CLOUDINARY_FOLDER: str = "bulls_barbershop"
+
+    @property
+    def cloudinary_enabled(self) -> bool:
+        """True cuando las credenciales de Cloudinary están completas."""
+        return bool(
+            self.CLOUDINARY_CLOUD_NAME
+            and self.CLOUDINARY_API_KEY
+            and self.CLOUDINARY_API_SECRET
+        )
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

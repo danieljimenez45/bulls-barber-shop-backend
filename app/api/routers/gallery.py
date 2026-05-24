@@ -18,7 +18,7 @@ from app.domain.gallery.use_cases import (
 from app.infrastructure.persistence.repositories.gallery import (
     SQLAlchemyGalleryRepository,
 )
-from app.infrastructure.storage.local import LocalFileStorage
+from app.infrastructure.storage import get_file_storage
 
 router = APIRouter()
 
@@ -66,7 +66,7 @@ async def subir_imagen(
     ext = os.path.splitext(file.filename or "")[1].lower()
     file_data = await file.read()
     repo = SQLAlchemyGalleryRepository(db)
-    storage = LocalFileStorage()
+    storage = get_file_storage()
     uc = UploadImageUseCase(repo, storage)
     try:
         image = uc.execute(file_data, ext, titulo=titulo, categoria=categoria)
@@ -82,7 +82,7 @@ def eliminar_imagen(
     _admin: AdminUser = Depends(get_current_admin),
 ):
     repo = SQLAlchemyGalleryRepository(db)
-    storage = LocalFileStorage()
+    storage = get_file_storage()
     uc = DeleteImageUseCase(repo, storage)
     try:
         uc.execute(image_id)
