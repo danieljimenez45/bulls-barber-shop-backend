@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.core.logging import RequestLoggingMiddleware, get_logger, setup_logging
-from app.database import create_tables
+from app.database import run_migrations
 from app.api.routers import admin, auth, bookings, contact, gallery, health, reviews, services
 
 # Inicializar logging antes de cualquier otra importación que pueda loggear
@@ -52,7 +52,9 @@ app.include_router(contact.router,  prefix="/api/contact",  tags=["Contacto"])
 # ── Eventos ───────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    create_tables()
+    # B-25 — Aplicar migraciones Alembic pendientes antes de servir peticiones.
+    # Es idempotente: si la BD ya está en la última revisión, no hace nada.
+    run_migrations()
     logger.info(
         "Bulls Barber Shop API arrancada",
         extra={"debug": settings.DEBUG, "cors_origins": settings.get_cors_origins()},
