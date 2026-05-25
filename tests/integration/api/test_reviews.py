@@ -1,0 +1,75 @@
+"""Tests de integración de la API de reseñas."""
+
+import pytest
+
+
+def _payload(**kwargs):
+    # ReviewCreate usa: nombre, valoracion, comentario
+    defaults = {
+        "nombre": "María García",
+        "comentario": "Excelente servicio, muy profesionales.",
+        "valoracion": 5,
+    }
+    defaults.update(kwargs)
+    return defaults
+
+
+@pytest.mark.integration
+def test_listar_reviews_publico_solo_visibles(client, auth_headers):
+    # Crear dos reseñas (visible=True por defecto)
+    r1 = client.post("/api/reviews/", json=_payload(nombre="Ana")).json()
+    r2 = client.post("/api/reviews/", json=_payload(nombre="Bob")).json()
+    # Ocultar r2: el endpoint requiere ?visible=false
+    client.patch(
+        f"/api/reviews/{r2['id']}/visibilidad",
+        headers=auth_headers,
+        params={"visible": False},
+    )
+    # La lista pública solo debe mostrar las visibles
+    response = client.get("/api/reviews/")
+    assert response.status_code == 200
+    nombres = [r["nombre"] for r in response.json()["items"]]
+    assert "Ana" in nombres
+    assert "Bob" not in nombres
+
+
+@pytest.mark.integration
+def test_crear_review_publico_201(client):
+    response = client.post("/api/reviews/", json=_payload())
+    assert response.status_code == 201
+    data = response.json()
+    assert data["nombre"] == "María García"
+    assert data["valoracion"] == 5
+
+
+@pytest.mark.integration
+def test_toggle_visibilidad_sin_token_401(client):
+    created = client.post("/api/reviews/", json=_payload()).json()
+    # Sin token → 401
+    response = client.patch(
+        f"/api/reviews/{created['id']}/visibilidad",
+        params={"visible": False},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_toggle_visibilidad_con_token(client, auth_headers):
+    created = client.post("/api/reviews/", json=_payload()).json()
+    visible_inicial = created["visible"]
+    # Invertir visibilidad
+    nueva_visibilidad = not visible_inicial
+    response = client.patch(
+        f"/api/reviews/{created['id']}/visibilidad",
+        headers=auth_headers,
+        params={"visible": nueva_visibilidad},
+    )
+    assert response.status_code == 200
+    assert response.json()["visible"] == nueva_visibilidad
+
+
+@pytest.mark.integration
+def test_eliminar_review(client, auth_headers):
+    created = client.post("/api/reviews/", json=_payload()).json()
+    response = client.delete(f"/api/reviews/{created['id']}", headers=auth_headers)
+    assert response.status_code in (200, 204)

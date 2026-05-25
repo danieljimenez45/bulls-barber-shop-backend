@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import field_validator
+from pydantic import ConfigDict, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -80,8 +80,7 @@ class Settings(BaseSettings):
                     origins.append(candidate)
         return origins
 
-    class Config:
-        env_file = ".env"
+    model_config = ConfigDict(env_file=".env")
 
 
 settings = Settings()

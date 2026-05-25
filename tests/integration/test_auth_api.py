@@ -19,7 +19,10 @@ def _create_admin(db_session, email="admin@test.com", password="AdminPass123!"):
 class TestLogin:
     def test_login_correcto_devuelve_token(self, client, db_session):
         email, password = _create_admin(db_session)
-        resp = client.post("/api/auth/login", json={"email": email, "password": password})
+        resp = client.post(
+            "/api/auth/login",
+            data={"username": email, "password": password},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
@@ -28,15 +31,21 @@ class TestLogin:
 
     def test_password_incorrecta_devuelve_401(self, client, db_session):
         email, _ = _create_admin(db_session)
-        resp = client.post("/api/auth/login", json={"email": email, "password": "wrong"})
+        resp = client.post(
+            "/api/auth/login",
+            data={"username": email, "password": "wrong"},
+        )
         assert resp.status_code == 401
 
     def test_usuario_inexistente_devuelve_401(self, client):
-        resp = client.post("/api/auth/login", json={"email": "noexiste@test.com", "password": "pass"})
+        resp = client.post(
+            "/api/auth/login",
+            data={"username": "noexiste@test.com", "password": "pass"},
+        )
         assert resp.status_code == 401
 
     def test_campos_faltantes_devuelve_422(self, client):
-        resp = client.post("/api/auth/login", json={"email": "admin@test.com"})
+        resp = client.post("/api/auth/login", data={"username": "admin@test.com"})
         assert resp.status_code == 422
 
 

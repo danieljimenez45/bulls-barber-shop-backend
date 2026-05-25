@@ -1,7 +1,5 @@
 """Tests de integración para el endpoint /api/contact."""
 
-from unittest.mock import patch
-
 
 def _contact_payload(**kwargs) -> dict:
     base = {
@@ -16,12 +14,16 @@ def _contact_payload(**kwargs) -> dict:
 
 
 class TestContacto:
-    def test_envia_mensaje_correctamente(self, client):
-        with patch("app.infrastructure.notifications.smtp_email.send_email"):
-            resp = client.post("/api/contact/", json=_contact_payload())
-        assert resp.status_code == 200
+    def test_envia_mensaje_correctamente(self, client, mocker):
+        mocker.patch(
+            "app.api.routers.contact.SMTPContactNotifier",
+            return_value=mocker.Mock(),
+        )
+        resp = client.post("/api/contact/", json=_contact_payload())
+        assert resp.status_code == 201
         data = resp.json()
         assert data["ok"] is True
+        assert data["id"] is not None
 
     def test_nombre_obligatorio(self, client):
         payload = _contact_payload()

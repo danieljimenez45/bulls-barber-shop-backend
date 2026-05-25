@@ -3,10 +3,10 @@ Repositorio SQLAlchemy para el dominio de reservas.
 
 B-22: todas las queries filtran registros con deleted_at IS NOT NULL para
       implementar soft-delete sin pérdida de datos históricos.
-      delete() ya no cambia el estado, sino que fija deleted_at = utcnow().
+      delete() ya no cambia el estado, sino que fija deleted_at = now(UTC).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import func
@@ -121,7 +121,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         )
         if not orm:
             raise BookingNotFound(f"Reserva {booking_id} no encontrada")
-        orm.deleted_at = datetime.utcnow()
+        orm.deleted_at = datetime.now(timezone.utc)
         self._session.commit()
 
     def is_slot_available(self, fecha_hora: datetime) -> bool:

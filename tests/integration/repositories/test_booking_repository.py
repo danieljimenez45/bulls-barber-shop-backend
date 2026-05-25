@@ -1,0 +1,188 @@
+"""
+Tests de integración del repositorio SQLAlchemy de Booking.
+Usa SQLite en memoria via la fixture db_session de conftest.
+"""
+
+from datetime import date, datetime
+
+import pytest
+
+from app.domain.booking.entity import Booking
+from app.domain.booking.ports import BookingNotFound
+from app.infrastructure.persistence.repositories.booking import SQLAlchemyBookingRepository
+
+
+def _booking(fecha_hora=None, estado="pendiente", **kwargs) -> Booking:
+    return Booking(
+        nombre_cliente=kwargs.get("nombre_cliente", "Cliente Test"),
+        telefono=kwargs.get("telefono", "600000001"),
+        servicio_id=kwargs.get("servicio_id", 1),
+        servicio_nombre=kwargs.get("servicio_nombre", "Corte"),
+        fecha_hora=fecha_hora or datetime(2025, 8, 15, 10, 0),
+        estado=estado,
+    )
+
+
+@pytest.mark.integration
+def test_create_devuelve_entidad_con_id(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    created = repo.create(_booking())
+    assert created.id is not None
+    assert created.nombre_cliente == "Cliente Test"
+
+
+@pytest.mark.integration
+def test_get_by_id_existente(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    created = repo.create(_booking())
+    found = repo.get_by_id(created.id)
+    assert found is not None
+    assert found.id == created.id
+
+
+@pytest.mark.integration
+def test_get_by_id_no_existente_devuelve_none(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    assert repo.get_by_id(9999) is None
+
+
+@pytest.mark.integration
+def test_list_sin_filtros(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 11, 0)))
+    items = repo.list()
+    assert len(items) == 2
+
+
+@pytest.mark.integration
+def test_list_filtrado_por_estado(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    b1 = repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0), estado="pendiente"))
+    b2 = repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 11, 0), estado="pendiente"))
+    # Confirmar b2
+    b2.estado = "confirmada"
+    repo.update(b2)
+
+    pendientes = repo.list(estado="pendiente")
+    assert len(pendientes) == 1
+    assert pendientes[0].id == b1.id
+
+
+@pytest.mark.integration
+def test_list_respeta_skip_y_limit(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    for i in range(5):
+        repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10 + i, 0)))
+    page = repo.list(skip=2, limit=2)
+    assert len(page) == 2
+
+
+@pytest.mark.integration
+def test_count_total(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 11, 0)))
+    assert repo.count() == 2
+
+
+@pytest.mark.integration
+def test_count_por_estado(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    b = repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 11, 0)))
+    # Confirmar el primero
+    b.estado = "confirmada"
+    repo.update(b)
+    assert repo.count(estado="confirmada") == 1
+    assert repo.count(estado="pendiente") == 1
+
+
+@pytest.mark.integration
+def test_update_persiste_cambios(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    created = repo.create(_booking())
+    created.estado = "confirmada"
+    created.notas = "Nota actualizada"
+    updated = repo.update(created)
+    assert updated.estado == "confirmada"
+    assert updated.notas == "Nota actualizada"
+
+
+@pytest.mark.integration
+def test_delete_softdelete_invisible_para_get(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    created = repo.create(_booking())
+    repo.delete(created.id)
+    assert repo.get_by_id(created.id) is None
+
+
+@pytest.mark.integration
+def test_delete_softdelete_no_cuenta_en_count(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    b = repo.create(_booking())
+    repo.delete(b.id)
+    assert repo.count() == 0
+
+
+@pytest.mark.integration
+def test_delete_registro_no_existente_lanza_booking_not_found(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    with pytest.raises(BookingNotFound):
+        repo.delete(9999)
+
+
+@pytest.mark.integration
+def test_is_slot_available_libre(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 0)) is True
+
+
+@pytest.mark.integration
+def test_is_slot_available_ocupado(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 0)) is False
+
+
+@pytest.mark.integration
+def test_is_slot_available_cancelada_cuenta_como_libre(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    b = repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    b.estado = "cancelada"
+    repo.update(b)
+    # Slot cancelado → debe estar libre
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 0)) is True
+
+
+@pytest.mark.integration
+def test_get_slots_ocupados_filtra_por_fecha(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 11, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 16, 10, 0)))  # otro día
+
+    slots = repo.get_slots_ocupados(date(2025, 8, 15))
+    assert len(slots) == 2
+
+
+@pytest.mark.integration
+def test_get_slots_ocupados_excluye_canceladas(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    b = repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    b.estado = "cancelada"
+    repo.update(b)
+
+    slots = repo.get_slots_ocupados(date(2025, 8, 15))
+    assert len(slots) == 0
+
+
+@pytest.mark.integration
+def test_list_by_date_range_filtra_correctamente(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 1, 10, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    repo.create(_booking(fecha_hora=datetime(2025, 9, 1, 10, 0)))
+
+    result = repo.list_by_date_range(date(2025, 8, 1), date(2025, 8, 31))
+    assert len(result) == 2

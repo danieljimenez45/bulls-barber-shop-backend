@@ -72,7 +72,7 @@ class TestSubirImagen:
         mock_storage.save.return_value = "/uploads/test.jpg"
 
         with patch(
-            "app.api.routers.gallery.LocalFileStorage",
+            "app.api.routers.gallery.get_file_storage",
             return_value=mock_storage,
         ):
             resp = client.post(
@@ -101,7 +101,7 @@ class TestEliminarImagen:
 
     def test_id_inexistente_devuelve_404(self, client, admin_token):
         mock_storage = MagicMock()
-        with patch("app.api.routers.gallery.LocalFileStorage", return_value=mock_storage):
+        with patch("app.api.routers.gallery.get_file_storage", return_value=mock_storage):
             resp = client.delete(
                 "/api/gallery/9999",
                 headers={"Authorization": f"Bearer {admin_token}"},

@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,12 +15,32 @@ from app.api.routers import admin, auth, bookings, contact, gallery, health, rev
 setup_logging(debug=settings.DEBUG)
 logger = get_logger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Gestiona el ciclo de vida de la aplicación.
+    Sustituye al decorador @app.on_event("startup") deprecado en FastAPI.
+    """
+    # ── Startup ───────────────────────────────────────────────────────────────
+    # B-25 — Aplicar migraciones Alembic pendientes antes de servir peticiones.
+    # Es idempotente: si la BD ya está en la última revisión, no hace nada.
+    run_migrations()
+    logger.info(
+        "Bulls Barber Shop API arrancada",
+        extra={"debug": settings.DEBUG, "cors_origins": settings.get_cors_origins()},
+    )
+    yield
+    # ── Shutdown (ampliar aquí si se necesita limpieza al parar) ──────────────
+
+
 app = FastAPI(
     title="Bulls Barber Shop API",
     description="API para la barbería Bulls Barber Shop 🐂",
     version="1.0.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+    lifespan=lifespan,
 )
 
 # ── Middleware — orden importa: primero logging, luego CORS ───────────────────
@@ -48,18 +69,6 @@ app.include_router(bookings.router, prefix="/api/bookings", tags=["Reservas"])
 app.include_router(reviews.router,  prefix="/api/reviews",  tags=["Reseñas"])
 app.include_router(gallery.router,  prefix="/api/gallery",  tags=["Galería"])
 app.include_router(contact.router,  prefix="/api/contact",  tags=["Contacto"])
-
-
-# ── Eventos ───────────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def startup_event():
-    # B-25 — Aplicar migraciones Alembic pendientes antes de servir peticiones.
-    # Es idempotente: si la BD ya está en la última revisión, no hace nada.
-    run_migrations()
-    logger.info(
-        "Bulls Barber Shop API arrancada",
-        extra={"debug": settings.DEBUG, "cors_origins": settings.get_cors_origins()},
-    )
 
 
 # ── SPA — React compilado (solo cuando existe static_frontend/) ───────────────
