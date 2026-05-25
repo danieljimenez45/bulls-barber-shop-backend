@@ -71,6 +71,45 @@ def test_get_disponibilidad_fecha_invalida_422(client):
     assert response.status_code == 422
 
 
+# ── Validaciones de schema ─────────────────────────────────────────────────────
+
+@pytest.mark.integration
+def test_crear_reserva_nombre_demasiado_largo_422(client):
+    """nombre_cliente con más de 100 caracteres debe devolver 422."""
+    response = client.post("/api/bookings/", json=_payload(nombre_cliente="A" * 101))
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_crear_reserva_telefono_demasiado_largo_422(client):
+    """Teléfono con más de 20 caracteres debe devolver 422."""
+    response = client.post("/api/bookings/", json=_payload(telefono="1" * 21))
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_crear_reserva_email_invalido_422(client):
+    """Email con formato incorrecto debe devolver 422."""
+    response = client.post("/api/bookings/", json=_payload(email="no-es-un-email"))
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_actualizar_estado_invalido_422(client, auth_headers, mocker):
+    """Estado fuera de los valores permitidos debe devolver 422."""
+    mocker.patch(
+        "app.api.routers.bookings.SMTPBookingNotifier",
+        return_value=mocker.Mock(),
+    )
+    created = client.post("/api/bookings/", json=_payload()).json()
+    response = client.patch(
+        f"/api/bookings/{created['id']}",
+        headers=auth_headers,
+        json={"estado": "inventado"},
+    )
+    assert response.status_code == 422
+
+
 # ── Endpoints protegidos ───────────────────────────────────────────────────────
 
 @pytest.mark.integration

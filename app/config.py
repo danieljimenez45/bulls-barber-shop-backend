@@ -1,20 +1,36 @@
-from typing import List
+from typing import List, Optional
 
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     APP_NAME: str = "Bulls Barber Shop"
-    DEBUG: bool = True
+    # Seguro por defecto: DEBUG=False en producción.
+    # En desarrollo pon DEBUG=true en tu .env local.
+    DEBUG: bool = False
 
     # Base de datos (SQLite para dev, PostgreSQL para producción)
     DATABASE_URL: str = "sqlite:///./bulls_barbershop.db"
 
-    # Seguridad — JWT
-    SECRET_KEY: str = "changeme-secret-key-in-production"
+    # ── Seguridad — JWT ───────────────────────────────────────────────────────
+    # SECRET_KEY no tiene valor por defecto en el código.
+    # Debe configurarse siempre mediante variable de entorno o fichero .env.
+    # Genera un valor seguro con: openssl rand -hex 32
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 h
+
+    @model_validator(mode="after")
+    def validate_secret_key(self) -> "Settings":
+        """Impide arrancar sin SECRET_KEY configurada."""
+        if not self.SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY no está configurada. "
+                "Define la variable de entorno SECRET_KEY o añádela a tu fichero .env. "
+                "Genera un valor seguro con: openssl rand -hex 32"
+            )
+        return self
 
     # CORS — orígenes permitidos.
     # En .env se puede definir como JSON o lista separada por comas:

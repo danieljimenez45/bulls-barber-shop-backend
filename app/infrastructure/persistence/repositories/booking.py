@@ -1,9 +1,12 @@
 """
 Repositorio SQLAlchemy para el dominio de reservas.
 
-B-22: todas las queries filtran registros con deleted_at IS NOT NULL para
-      implementar soft-delete sin pérdida de datos históricos.
-      delete() ya no cambia el estado, sino que fija deleted_at = now(UTC).
+Todas las queries filtran registros con deleted_at IS NULL para implementar
+soft-delete sin pérdida de datos históricos.
+
+delete() fija deleted_at = now(UTC) Y cambia estado a "cancelada", garantizando
+consistencia semántica: un turno eliminado queda también marcado como cancelado,
+lo que facilita auditorías e informes históricos que consulten la columna estado.
 """
 
 from datetime import date, datetime, timezone
@@ -110,9 +113,13 @@ class SQLAlchemyBookingRepository(IBookingRepository):
 
     def delete(self, booking_id: int) -> None:
         """
-        Soft-delete (B-22): fija deleted_at al instante actual.
-        El registro se conserva en BD pero queda invisible para todas las
-        consultas normales que usan _active().
+        Soft-delete: fija deleted_at al instante actual Y cambia estado a "cancelada".
+
+        Fijar deleted_at hace que _active() excluya el registro de todas las
+        consultas normales. Cambiar estado a "cancelada" añade consistencia
+        semántica: si en el futuro se consulta la tabla sin el filtro deleted_at
+        (p.ej. en un informe histórico), el registro refleja correctamente que
+        el turno fue cancelado y no simplemente eliminado por error.
         """
         orm = (
             self._active(self._session.query(BookingORM))
@@ -121,6 +128,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         )
         if not orm:
             raise BookingNotFound(f"Reserva {booking_id} no encontrada")
+        orm.estado = "cancelada"
         orm.deleted_at = datetime.now(timezone.utc)
         self._session.commit()
 

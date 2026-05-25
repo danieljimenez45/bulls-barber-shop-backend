@@ -1,20 +1,29 @@
+"""Schemas Pydantic para el dominio de reseñas."""
+
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field
 
 
 class ReviewCreate(BaseModel):
-    nombre: str
-    valoracion: int
-    comentario: Optional[str] = None
-
-    @field_validator("valoracion")
-    @classmethod
-    def validar_valoracion(cls, v: int) -> int:
-        if not 1 <= v <= 5:
-            raise ValueError("La valoración debe estar entre 1 y 5")
-        return v
+    nombre: str = Field(
+        ...,
+        min_length=2,
+        max_length=100,
+        description="Nombre del autor de la reseña.",
+    )
+    valoracion: int = Field(
+        ...,
+        ge=1,
+        le=5,
+        description="Puntuación entre 1 (mínimo) y 5 (máximo).",
+    )
+    comentario: Optional[str] = Field(
+        None,
+        max_length=1000,
+        description="Texto libre opcional de la reseña.",
+    )
 
 
 class ReviewOut(BaseModel):

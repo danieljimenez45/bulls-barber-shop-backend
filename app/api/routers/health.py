@@ -7,6 +7,8 @@ GET /api/health
   • Comprueba la conectividad con la base de datos (SELECT 1)
   • Devuelve 200 si todo está bien, 503 si la BD no responde
   • Incluye timestamp UTC y versión de la API para facilitar el diagnóstico
+  • El detalle del error de BD solo se expone cuando DEBUG=True, evitando
+    filtrar información interna (strings de conexión, rutas) en producción
 ─────────────────────────────────────────────────────────────────────────────
 """
 
@@ -17,6 +19,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 
 router = APIRouter()
@@ -37,6 +40,7 @@ def health_check(db: Session = Depends(get_db)):
 
     - **status**: `ok` si todo funciona, `degraded` si la BD no responde.
     - **db**: `ok` | `error`.
+    - **db_error**: detalle del error, solo visible cuando `DEBUG=True`.
     - **timestamp**: instante UTC de la comprobación.
     - **version**: versión de la API.
 
@@ -60,7 +64,9 @@ def health_check(db: Session = Depends(get_db)):
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version":   API_VERSION,
     }
-    if db_error:
+
+    # En producción (DEBUG=False) no se expone el detalle del error.
+    if db_error and settings.DEBUG:
         payload["db_error"] = db_error
 
     return JSONResponse(content=payload, status_code=http_status)

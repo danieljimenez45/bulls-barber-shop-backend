@@ -73,3 +73,54 @@ def test_eliminar_review(client, auth_headers):
     created = client.post("/api/reviews/", json=_payload()).json()
     response = client.delete(f"/api/reviews/{created['id']}", headers=auth_headers)
     assert response.status_code in (200, 204)
+
+
+@pytest.mark.integration
+def test_listar_reviews_solo_visibles_false_sin_token_401(client):
+    """Listar reseñas ocultas sin JWT debe devolver 401."""
+    response = client.get("/api/reviews/", params={"solo_visibles": False})
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_listar_reviews_solo_visibles_false_con_token_200(client, auth_headers):
+    """Con JWT válido el admin puede ver todas las reseñas, incluyendo las ocultas."""
+    client.post("/api/reviews/", json=_payload(nombre="Visible"))
+    response = client.get(
+        "/api/reviews/",
+        headers=auth_headers,
+        params={"solo_visibles": False},
+    )
+    assert response.status_code == 200
+
+
+# ── Validaciones de schema ─────────────────────────────────────────────────────
+
+@pytest.mark.integration
+def test_crear_review_nombre_demasiado_corto_422(client):
+    """Nombre con menos de 2 caracteres debe devolver 422."""
+    response = client.post("/api/reviews/", json=_payload(nombre="X"))
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_crear_review_nombre_demasiado_largo_422(client):
+    """Nombre con más de 100 caracteres debe devolver 422."""
+    response = client.post("/api/reviews/", json=_payload(nombre="A" * 101))
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_crear_review_valoracion_fuera_de_rango_422(client):
+    """Valoración fuera del rango [1, 5] debe devolver 422."""
+    response_alta = client.post("/api/reviews/", json=_payload(valoracion=6))
+    assert response_alta.status_code == 422
+    response_baja = client.post("/api/reviews/", json=_payload(valoracion=0))
+    assert response_baja.status_code == 422
+
+
+@pytest.mark.integration
+def test_crear_review_comentario_demasiado_largo_422(client):
+    """Comentario con más de 1000 caracteres debe devolver 422."""
+    response = client.post("/api/reviews/", json=_payload(comentario="C" * 1001))
+    assert response.status_code == 422

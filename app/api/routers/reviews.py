@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies.auth import get_current_admin
+from app.api.dependencies.auth import get_current_admin, get_optional_admin
 from app.api.dependencies.pagination import PaginationParams
 from app.core.rate_limit import limiter
 from app.api.schemas.pagination import PagedResponse
@@ -31,8 +31,22 @@ def listar_resenas(
     solo_visibles: bool = True,
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
+    admin: AdminUser | None = Depends(get_optional_admin),
 ):
-    """Lista reseñas paginadas. Público (solo_visibles=true) o admin (solo_visibles=false)."""
+    """Lista reseñas paginadas.
+
+    - Público (sin token): solo devuelve reseñas visibles (solo_visibles=true forzado).
+    - Admin (con JWT válido): puede solicitar solo_visibles=false para ver las ocultas.
+
+    Cualquier intento de pasar solo_visibles=false sin JWT válido devuelve 401.
+    """
+    if not solo_visibles and admin is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Se requiere autenticación para listar reseñas no visibles.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     repo = SQLAlchemyReviewRepository(db)
     uc = ListReviewsUseCase(repo)
     items, total = uc.execute(solo_visibles=solo_visibles, skip=pagination.skip, limit=pagination.limit)

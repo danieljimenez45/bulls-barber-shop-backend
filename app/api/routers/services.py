@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies.auth import get_current_admin
+from app.api.dependencies.auth import get_current_admin, get_optional_admin
 from app.api.schemas.service import ServiceCreate, ServiceOut, ServiceUpdate
 from app.database import get_db
 from app.domain.auth.entity import AdminUser
@@ -31,8 +31,22 @@ def listar_servicios(
     categoria: Optional[str] = None,
     solo_activos: bool = True,
     db: Session = Depends(get_db),
+    admin: AdminUser | None = Depends(get_optional_admin),
 ):
-    """Devuelve todos los servicios (filtrados opcionalmente por categoría)."""
+    """Devuelve servicios filtrados por categoría.
+
+    - Público (sin token): solo devuelve servicios activos (solo_activos=true forzado).
+    - Admin (con JWT válido): puede solicitar solo_activos=false para ver los inactivos.
+
+    Cualquier intento de pasar solo_activos=false sin JWT válido devuelve 401.
+    """
+    if not solo_activos and admin is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Se requiere autenticación para listar servicios inactivos.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     repo = SQLAlchemyServiceRepository(db)
     uc = ListServicesUseCase(repo)
     services = uc.execute(solo_activos=solo_activos, categoria=categoria)

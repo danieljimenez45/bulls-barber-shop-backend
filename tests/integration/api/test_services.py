@@ -68,3 +68,28 @@ def test_eliminar_servicio(client, auth_headers):
     svc_id = created["id"]
     response = client.delete(f"/api/services/{svc_id}", headers=auth_headers)
     assert response.status_code in (200, 204)
+
+
+@pytest.mark.integration
+def test_listar_servicios_solo_activos_false_sin_token_401(client):
+    """Listar servicios inactivos sin JWT debe devolver 401."""
+    response = client.get("/api/services/", params={"solo_activos": False})
+    assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_listar_servicios_solo_activos_false_con_token_200(client, auth_headers):
+    """Con JWT válido el admin puede ver todos los servicios, incluyendo los inactivos."""
+    client.post(
+        "/api/services/",
+        headers=auth_headers,
+        json=_payload(nombre="Servicio Inactivo", activo=False),
+    )
+    response = client.get(
+        "/api/services/",
+        headers=auth_headers,
+        params={"solo_activos": False},
+    )
+    assert response.status_code == 200
+    nombres = [s["nombre"] for s in response.json()]
+    assert "Servicio Inactivo" in nombres

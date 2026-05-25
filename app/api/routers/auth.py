@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.api.schemas.auth import TokenResponse
+from app.core.rate_limit import limiter
 from app.database import get_db
 from app.domain.auth.ports import InvalidCredentials
 from app.domain.auth.use_cases import LoginUseCase
@@ -17,6 +18,8 @@ router = APIRouter()
 def login(
     form: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
+    # Máximo 5 intentos por IP en 60 segundos para frenar ataques de fuerza bruta.
+    _rl: None = Depends(limiter(max_requests=5, window_seconds=60)),
 ):
     """
     Autentica al admin y devuelve un JWT.

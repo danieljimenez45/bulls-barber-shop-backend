@@ -37,3 +37,28 @@ def test_login_usuario_no_existe_401(client):
 def test_endpoint_protegido_sin_token_401(client):
     response = client.get("/api/bookings/")
     assert response.status_code == 401
+
+
+@pytest.mark.integration
+def test_login_rate_limit_429(client, admin_user, monkeypatch):
+    """Superar el límite de intentos de login debe devolver 429.
+
+    El rate limit está deshabilitado globalmente en tests (RATE_LIMIT_ENABLED=false
+    en pytest.ini), así que lo habilitamos solo para esta prueba usando monkeypatch.
+    """
+    from app.config import settings as _settings
+    monkeypatch.setattr(_settings, "RATE_LIMIT_ENABLED", True)
+
+    # Los primeros 5 intentos son permitidos (aunque fallen con 401)
+    for _ in range(5):
+        client.post(
+            "/api/auth/login",
+            data={"username": "admin@test.com", "password": "wrong"},
+        )
+
+    # El 6.º intento debe ser bloqueado por rate limit
+    response = client.post(
+        "/api/auth/login",
+        data={"username": "admin@test.com", "password": "wrong"},
+    )
+    assert response.status_code == 429
