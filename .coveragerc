@@ -1,9 +1,5 @@
 [run]
 omit =
-    # Estructura legacy (sustituida por arquitectura hexagonal)
-    app/routers/*
-    app/models/*
-    app/schemas/*
-    # Sin lógica propia testeable
+    # Sin lógica propia testeable en tests automatizados
     app/infrastructure/storage/*
     app/infrastructure/notifications/smtp_email.py

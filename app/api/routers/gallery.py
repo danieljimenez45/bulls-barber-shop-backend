@@ -59,20 +59,19 @@ def _validate_upload(file_data: bytes, filename: str) -> str:
             detail="El archivo supera el límite de 5 MB.",
         )
 
-    # 2. Extensión y doble extensión
-    name_without_ext, ext = os.path.splitext(filename.lower())
+    # 2. Doble extensión (antes que la lista blanca: p.ej. foto.jpg.exe → .exe no permitida)
+    name_lower = filename.lower()
+    name_without_ext, ext = os.path.splitext(name_lower)
+    if os.path.splitext(name_without_ext)[1]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nombre de archivo con doble extensión no permitido.",
+        )
     if ext not in _ALLOWED_EXTENSIONS:
         allowed = ", ".join(sorted(_ALLOWED_EXTENSIONS))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Extensión no permitida. Formatos aceptados: {allowed}.",
-        )
-    # Doble extensión: si el nombre sin la última extensión sigue teniendo extensión,
-    # el archivo tiene un nombre compuesto peligroso (p.ej. foto.jpg.exe).
-    if os.path.splitext(name_without_ext)[1]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nombre de archivo con doble extensión no permitido.",
         )
 
     # 3. Validación de contenido con Pillow

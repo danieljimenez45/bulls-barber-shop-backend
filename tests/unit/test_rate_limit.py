@@ -39,6 +39,9 @@ class TestGetClientIp:
 class TestLimiter:
     def setup_method(self):
         _store.clear()
+        # pytest.ini desactiva rate limit para integración; estos tests lo necesitan activo.
+        import app.config as cfg
+        cfg.settings.RATE_LIMIT_ENABLED = True
 
     def test_permite_peticiones_dentro_del_limite(self):
         import asyncio

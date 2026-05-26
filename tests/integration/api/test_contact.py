@@ -2,15 +2,7 @@
 
 import pytest
 
-
-def _payload(**kwargs):
-    defaults = {
-        "nombre": "Carlos Ruiz",
-        "email": "carlos@example.com",
-        "mensaje": "Quiero información sobre precios.",
-    }
-    defaults.update(kwargs)
-    return defaults
+from tests.helpers import contact_payload
 
 
 @pytest.mark.integration
@@ -19,7 +11,7 @@ def test_enviar_mensaje_publico_201(client, mocker):
         "app.api.routers.contact.SMTPContactNotifier",
         return_value=mocker.Mock(),
     )
-    response = client.post("/api/contact/", json=_payload())
+    response = client.post("/api/contact/", json=contact_payload())
     assert response.status_code == 201
     data = response.json()
     # El endpoint devuelve {"ok": True, "id": ..., "mensaje": "..."}
@@ -45,7 +37,7 @@ def test_listar_mensajes_con_token_200(client, auth_headers, mocker):
         "app.api.routers.contact.SMTPContactNotifier",
         return_value=mocker.Mock(),
     )
-    client.post("/api/contact/", json=_payload())
+    client.post("/api/contact/", json=contact_payload())
     response = client.get("/api/contact/", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
@@ -58,7 +50,7 @@ def test_marcar_como_leido(client, auth_headers, mocker):
         "app.api.routers.contact.SMTPContactNotifier",
         return_value=mocker.Mock(),
     )
-    created = client.post("/api/contact/", json=_payload()).json()
+    created = client.post("/api/contact/", json=contact_payload()).json()
     msg_id = created["id"]
     response = client.patch(f"/api/contact/{msg_id}/leido", headers=auth_headers)
     assert response.status_code == 200
@@ -71,9 +63,15 @@ def test_filtro_solo_no_leidos(client, auth_headers, mocker):
         "app.api.routers.contact.SMTPContactNotifier",
         return_value=mocker.Mock(),
     )
-    client.post("/api/contact/", json=_payload(nombre="A"))
-    created_b = client.post("/api/contact/", json=_payload(nombre="B")).json()
+    client.post("/api/contact/", json=contact_payload(nombre="A"))
+    created_b = client.post("/api/contact/", json=contact_payload(nombre="B")).json()
     # Marcar B como leído
     client.patch(f"/api/contact/{created_b['id']}/leido", headers=auth_headers)
     response = client.get("/api/contact/", headers=auth_headers, params={"solo_no_leidos": True})
     assert response.status_code == 200
+
+
+@pytest.mark.integration
+def test_marcar_leido_inexistente_404(client, auth_headers):
+    response = client.patch("/api/contact/99999/leido", headers=auth_headers)
+    assert response.status_code == 404

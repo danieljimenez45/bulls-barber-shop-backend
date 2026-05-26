@@ -85,6 +85,32 @@ def test_count_activos(db_session):
 
 
 @pytest.mark.integration
+def test_update_inexistente_lanza_service_not_found(db_session):
+    from app.domain.service.entity import Service
+    from app.domain.service.ports import ServiceNotFound
+
+    repo = SQLAlchemyServiceRepository(db_session)
+    ghost = Service(
+        id=9999,
+        nombre="X",
+        precio=10.0,
+        duracion_minutos=30,
+        categoria="corte",
+    )
+    with pytest.raises(ServiceNotFound):
+        repo.update(ghost)
+
+
+@pytest.mark.integration
+def test_delete_inexistente_lanza_service_not_found(db_session):
+    from app.domain.service.ports import ServiceNotFound
+
+    repo = SQLAlchemyServiceRepository(db_session)
+    with pytest.raises(ServiceNotFound):
+        repo.delete(9999)
+
+
+@pytest.mark.integration
 def test_list_por_categoria(db_session):
     repo = SQLAlchemyServiceRepository(db_session)
     repo.create(_service(nombre="Corte", categoria="corte"))

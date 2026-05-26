@@ -1,4 +1,6 @@
--r requirements.txt
+# Dependencias de desarrollo y test.
+# Regenerar el lockfile con: pip-compile requirements-dev.in
+-r requirements.in
 
 # Testing
 pytest>=8.3.0
@@ -10,4 +12,3 @@ httpx>=0.27.0
 
 # Gestión de dependencias
 pip-tools>=7.0.0
-

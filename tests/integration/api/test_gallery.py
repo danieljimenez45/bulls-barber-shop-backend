@@ -92,3 +92,84 @@ def test_upload_sin_token_401(client, mocker):
         data={"categoria": "corte"},
     )
     assert response.status_code == 401
+
+
+# ── Listado y filtros ─────────────────────────────────────────────────────────
+
+@pytest.mark.integration
+def test_lista_vacia_inicialmente(client):
+    """Con la BD vacía el listado de galería devuelve total=0."""
+    resp = client.get("/api/gallery/")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["items"] == []
+    assert data["total"] == 0
+
+
+@pytest.mark.integration
+def test_paginacion_devuelve_valores_por_defecto(client):
+    """Sin parámetros de paginación deben devolverse page=1 y size=20."""
+    resp = client.get("/api/gallery/")
+    data = resp.json()
+    assert data["page"] == 1
+    assert data["size"] == 20
+
+
+@pytest.mark.integration
+def test_paginacion_personalizada(client, db_session):
+    """Con 3 imágenes y size=2 se devuelven 2 items y pages=2."""
+    from app.infrastructure.persistence.orm.gallery import GalleryORM
+
+    for i in range(3):
+        db_session.add(GalleryORM(
+            imagen_url=f"/uploads/img{i}.jpg",
+            titulo=f"Imagen {i}",
+            categoria="corte",
+            visible=True,
+        ))
+    db_session.commit()
+
+    resp = client.get("/api/gallery/?page=1&size=2")
+    data = resp.json()
+    assert len(data["items"]) == 2
+    assert data["total"] == 3
+    assert data["pages"] == 2
+
+
+@pytest.mark.integration
+def test_filtra_por_categoria(client, db_session):
+    """El parámetro ?categoria= debe filtrar las imágenes por categoría."""
+    from app.infrastructure.persistence.orm.gallery import GalleryORM
+
+    db_session.add(GalleryORM(imagen_url="/uploads/corte.jpg", categoria="corte", visible=True))
+    db_session.add(GalleryORM(imagen_url="/uploads/barba.jpg", categoria="barba", visible=True))
+    db_session.commit()
+
+    resp = client.get("/api/gallery/?categoria=barba")
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["categoria"] == "barba"
+
+
+@pytest.mark.integration
+def test_imagenes_no_visibles_no_aparecen(client, db_session):
+    """Las imágenes con visible=False no deben aparecer en el listado público."""
+    from app.infrastructure.persistence.orm.gallery import GalleryORM
+
+    db_session.add(GalleryORM(imagen_url="/uploads/visible.jpg", categoria="corte", visible=True))
+    db_session.add(GalleryORM(imagen_url="/uploads/oculta.jpg", categoria="corte", visible=False))
+    db_session.commit()
+
+    resp = client.get("/api/gallery/")
+    assert resp.json()["total"] == 1
+
+
+# ── Eliminar: not found ────────────────────────────────────────────────────────
+
+@pytest.mark.integration
+def test_eliminar_imagen_id_inexistente_404(client, auth_headers, mocker):
+    """DELETE con un ID inexistente debe devolver 404."""
+    mock_storage = mocker.Mock()
+    mocker.patch("app.api.routers.gallery.get_file_storage", return_value=mock_storage)
+    resp = client.delete("/api/gallery/9999", headers=auth_headers)
+    assert resp.status_code == 404

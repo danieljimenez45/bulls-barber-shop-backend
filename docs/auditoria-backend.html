@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auditoría Técnica — Bulls Barber Shop Backend</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e7ecf3;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent2: #60a5fa;
+      --crit: #ef4444;
+      --high: #f97316;
+      --med: #eab308;
+      --low: #22c55e;
+      --ok: #10b981;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      margin: 0;
+      padding: 0;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    nav.toc {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    nav.toc h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 1rem; }
+    nav.toc a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      margin-bottom: 2px;
+    }
+    nav.toc a:hover { background: var(--surface2); color: var(--accent2); }
+    nav.toc .sub { padding-left: 1rem; font-size: 0.82rem; }
+    main {
+      flex: 1;
+      max-width: 1100px;
+      padding: 2rem 2.5rem 4rem;
+    }
+    header.hero {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f1419 60%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2.5rem;
+    }
+    header.hero h1 { margin: 0 0 0.5rem; font-size: 1.85rem; }
+    header.hero .meta { color: var(--muted); font-size: 0.9rem; }
+    header.hero .meta span { margin-right: 1.5rem; }
+    section { margin-bottom: 3rem; }
+    h2 {
+      font-size: 1.45rem;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 0.4rem;
+      margin-top: 2.5rem;
+    }
+    h3 { font-size: 1.15rem; color: var(--accent2); margin-top: 1.75rem; }
+    h4 { font-size: 1rem; color: var(--muted); margin-top: 1.25rem; }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    code, .path {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 0.88em;
+      background: var(--surface2);
+      padding: 0.15em 0.45em;
+      border-radius: 4px;
+      color: #7dd3fc;
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.65rem 0.85rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--surface2); color: var(--accent2); }
+    tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+    .badge {
+      display: inline-block;
+      padding: 0.2em 0.55em;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-crit { background: rgba(239,68,68,0.25); color: #fca5a5; }
+    .badge-high { background: rgba(249,115,22,0.25); color: #fdba74; }
+    .badge-med { background: rgba(234,179,8,0.2); color: #fde047; }
+    .badge-low { background: rgba(34,197,94,0.2); color: #86efac; }
+    .badge-ok { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .score-card .label { color: var(--muted); font-size: 0.85rem; }
+    .score-card .grade { font-size: 1.75rem; font-weight: 700; margin: 0.25rem 0; }
+    .solution {
+      background: rgba(59,130,246,0.08);
+      border-left: 4px solid var(--accent);
+      padding: 0.85rem 1.1rem;
+      margin: 0.75rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .solution strong { color: var(--accent2); }
+    ul.file-list { list-style: none; padding: 0; }
+    ul.file-list li {
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    ul.file-list li::before { content: "📄 "; }
+    .tree { font-family: monospace; font-size: 0.82rem; white-space: pre; background: var(--surface); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); }
+    @media print {
+      nav.toc { display: none; }
+      main { max-width: 100%; }
+      body { background: #fff; color: #111; }
+    }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      nav.toc { width: 100%; height: auto; position: relative; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc">
+    <h2>Índice</h2>
+    <a href="#resumen">1. Resumen ejecutivo</a>
+    <a href="#estructura">2. Estructura del proyecto</a>
+    <a href="#arquitectura">3. Arquitectura</a>
+    <a class="sub" href="#arquitectura-fortalezas">Fortalezas</a>
+    <a class="sub" href="#arquitectura-deuda">Deuda y legacy</a>
+    <a class="sub" href="#legacy-verificado">Legacy verificado (grep)</a>
+    <a class="sub" href="#legacy-mapa">Mapa legacy → código actual</a>
+    <a class="sub" href="#legacy-bookings">↳ Reservas</a>
+    <a class="sub" href="#legacy-services">↳ Servicios</a>
+    <a class="sub" href="#legacy-reviews">↳ Reseñas</a>
+    <a class="sub" href="#legacy-gallery">↳ Galería</a>
+    <a class="sub" href="#legacy-contact">↳ Contacto</a>
+    <a class="sub" href="#arquitectura-di">Inyección de dependencias</a>
+    <a href="#seguridad">4. Seguridad</a>
+    <a class="sub" href="#seg-critico">Crítico</a>
+    <a class="sub" href="#seg-alto">Alto</a>
+    <a class="sub" href="#seg-medio">Medio / Bajo</a>
+    <a class="sub" href="#seg-positivo">Aspectos positivos</a>
+    <a href="#datos">5. Base de datos</a>
+    <a href="#api-dominio">6. API y dominio</a>
+    <a href="#tests">7. Tests y cobertura</a>
+    <a class="sub" href="#tests-fallos">Fallos corregidos (pytest)</a>
+    <a class="sub" href="#tests-duplicados">Duplicación de suites</a>
+    <a href="#operacion">8. Operación y DX</a>
+    <a href="#dependencias">9. Dependencias</a>
+    <a href="#plan">10. Plan de acción</a>
+    <a href="#indice-archivos">11. Índice de archivos</a>
+    <a href="#endpoints">12. Mapa de endpoints</a>
+    <a href="#estado-actual">13. Estado actual (may 2026)</a>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <h1>Auditoría técnica completa</h1>
+      <p><strong>Bulls Barber Shop — Backend API</strong></p>
+      <div class="meta">
+        <span>📁 Raíz: <code>backend/</code></span>
+        <span>📅 Fecha: 25 de mayo de 2026</span>
+        <span>🔍 Alcance: código, seguridad, tests, operación</span>
+        <span>✅ Tests: 216 passed (tras correcciones en conftest)</span>
+      </div>
+      <p class="muted" style="margin-top:1rem;">
+        Documento generado tras revisión senior del repositorio. Incluye rutas relativas al backend,
+        hallazgos priorizados, soluciones propuestas, análisis verificado de código legacy y mapa
+        legacy → implementación actual. Última ampliación: análisis de imports y equivalencias por módulo.
+      </p>
+    </header>
+
+    <!-- 1. RESUMEN -->
+    <section id="resumen">
+      <h2>1. Resumen ejecutivo</h2>
+      <p>
+        El backend está en una <strong>migración avanzada hacia arquitectura hexagonal</strong>:
+        la capa activa es <code>app/api</code> + <code>app/domain</code> + <code>app/infrastructure</code>.
+        Solo <strong>14 archivos</strong> en <code>app/routers</code>, <code>app/models</code> y <code>app/schemas</code> son legacy verificado (no montado, sin imports externos). Ver sección <a href="#legacy-mapa" style="color:var(--accent2)">3.4 Mapa legacy → código actual</a>.
+      </p>
+
+      <div class="score-grid">
+        <div class="score-card"><div class="label">Arquitectura</div><div class="grade" style="color:#60a5fa">B+</div><div class="muted">Dominio aislado; API acoplada a concreciones</div></div>
+        <div class="score-card"><div class="label">Seguridad (prod sin .env)</div><div class="grade" style="color:#f97316">C+</div><div class="muted">Defaults inseguros; endpoints públicos filtran datos admin</div></div>
+        <div class="score-card"><div class="label">Capa de datos</div><div class="grade" style="color:#60a5fa">B</div><div class="muted">ORM + repos + Alembic coherentes</div></div>
+        <div class="score-card"><div class="label">Tests</div><div class="grade" style="color:#60a5fa">B</div><div class="muted">216 OK; duplicación ~40–50%</div></div>
+        <div class="score-card"><div class="label">Operación</div><div class="grade" style="color:#eab308">B-</div><div class="muted">Docker OK; migraciones en startup</div></div>
+      </div>
+
+      <p><strong>Veredicto:</strong> base sólida para MVP con panel admin. <strong>No desplegar a producción</strong> sin:
+        endurecer <code>SECRET_KEY</code> y <code>DEBUG</code>, cerrar fugas en listados públicos (reviews/services),
+        rate limit en login, y eliminar o aislar código legacy.</p>
+
+      <h3>Hallazgos más urgentes (top 5)</h3>
+      <table>
+        <thead><tr><th>#</th><th>Severidad</th><th>Hallazgo</th><th>Archivo principal</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><span class="badge badge-crit">Crítico</span></td><td>SECRET_KEY y DEBUG por defecto inseguros</td><td><code>app/config.py</code></td></tr>
+          <tr><td>2</td><td><span class="badge badge-crit">Crítico</span></td><td>Reseñas ocultas listables sin JWT (<code>solo_visibles=false</code>)</td><td><code>app/api/routers/reviews.py</code></td></tr>
+          <tr><td>3</td><td><span class="badge badge-crit">Crítico</span></td><td>Login sin rate limiting (fuerza bruta)</td><td><code>app/api/routers/auth.py</code></td></tr>
+          <tr><td>4</td><td><span class="badge badge-crit">Crítico</span></td><td>Routers legacy sin autenticación (riesgo si se remontan)</td><td><code>app/routers/*.py</code></td></tr>
+          <tr><td>5</td><td><span class="badge badge-high">Alto</span></td><td>Upload galería sin límite de tamaño ni validación de contenido</td><td><code>app/api/routers/gallery.py</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 2. ESTRUCTURA -->
+    <section id="estructura">
+      <h2>2. Estructura del proyecto</h2>
+      <div class="tree">backend/
+├── app/
+│   ├── main.py                 ← Entrada FastAPI, CORS, lifespan, routers
+│   ├── config.py               ← Settings (Pydantic BaseSettings)
+│   ├── database.py             ← Engine, SessionLocal, get_db, Alembic
+│   ├── core/
+│   │   ├── logging.py          ← JSON logs, RequestLoggingMiddleware
+│   │   └── rate_limit.py       ← Rate limit in-memory
+│   ├── domain/                 ← Núcleo hexagonal (7 contextos)
+│   │   ├── auth/
+│   │   ├── booking/
+│   │   ├── contact/
+│   │   ├── gallery/
+│   │   ├── review/
+│   │   ├── service/
+│   │   └── stats/
+│   ├── infrastructure/
+│   │   ├── persistence/orm/    ← ORM activo (6 tablas)
+│   │   ├── persistence/repositories/
+│   │   ├── security/           ← JWT, bcrypt
+│   │   ├── notifications/      ← SMTP, notifiers
+│   │   └── storage/            ← Local + Cloudinary
+│   ├── api/
+│   │   ├── routers/            ← Routers ACTIVOS
+│   │   ├── schemas/            ← Pydantic HTTP
+│   │   └── dependencies/       ← auth, pagination
+│   ├── routers/                ⚠ LEGACY — no montados
+│   ├── models/                 ⚠ LEGACY SQLAlchemy
+│   └── schemas/                ⚠ LEGACY Pydantic
+├── alembic/
+│   ├── env.py
+│   └── versions/0001_initial_schema.py
+├── tests/
+│   ├── conftest.py
+│   ├── unit/
+│   └── integration/
+├── docker/
+├── docs/
+│   └── auditoria-backend.html  ← Este documento
+├── scripts/create_admin.py
+├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
+├── .coveragerc
+└── alembic.ini</div>
+
+      <h3>Puntos de entrada del sistema</h3>
+      <table>
+        <thead><tr><th>Entrada</th><th>Ruta</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>API HTTP</td><td><code>app/main.py</code></td><td><code>uvicorn app.main:app</code> — lifespan ejecuta <code>run_migrations()</code></td></tr>
+          <tr><td>Migraciones CLI</td><td><code>alembic/env.py</code></td><td>Importa ORM de <code>app/infrastructure/persistence/orm/*</code></td></tr>
+          <tr><td>Admin bootstrap</td><td><code>scripts/create_admin.py</code></td><td>Usa <code>create_tables()</code> deprecated + <code>UserORM</code> directo</td></tr>
+          <tr><td>Docker</td><td><code>docker/Dockerfile</code></td><td>Prod: usuario <code>appuser</code>, workers según BD</td></tr>
+          <tr><td>Tests</td><td><code>tests/conftest.py</code></td><td>SQLite :memory: + StaticPool + override <code>get_db</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 3. ARQUITECTURA -->
+    <section id="arquitectura">
+      <h2>3. Arquitectura hexagonal</h2>
+
+      <h3 id="arquitectura-fortalezas">3.1 Fortalezas</h3>
+      <ul>
+        <li><strong>Dominio aislado:</strong> ningún import de <code>infrastructure</code>, <code>database</code>, <code>models</code> ni <code>schemas</code> en <code>app/domain/</code>.</li>
+        <li><strong>Puertos explícitos:</strong> <code>IUserRepository</code>, <code>IBookingRepository</code>, <code>ITokenService</code>, <code>IPasswordHasher</code>, <code>IFileStorage</code>, notificadores, etc.</li>
+        <li><strong>Mapeo ORM → entidad</strong> en cada repositorio (ej. <code>SQLAlchemyBookingRepository._to_entity</code>).</li>
+        <li><strong>Alembic</strong> apunta solo al ORM nuevo; <code>.coveragerc</code> excluye legacy de métricas.</li>
+        <li><strong>Fábrica storage:</strong> <code>app/infrastructure/storage/__init__.py</code> → <code>get_file_storage()</code> (Cloudinary vs local).</li>
+      </ul>
+
+      <h3>Contextos de dominio (bounded contexts)</h3>
+      <table>
+        <thead><tr><th>Contexto</th><th>Entity</th><th>Ports</th><th>Use cases</th><th>Repositorio</th><th>Router API</th></tr></thead>
+        <tbody>
+          <tr><td>auth</td><td><code>app/domain/auth/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/user.py</code></td><td><code>api/routers/auth.py</code></td></tr>
+          <tr><td>booking</td><td><code>domain/booking/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/booking.py</code></td><td><code>api/routers/bookings.py</code></td></tr>
+          <tr><td>service</td><td><code>domain/service/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/service.py</code></td><td><code>api/routers/services.py</code></td></tr>
+          <tr><td>review</td><td><code>domain/review/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/review.py</code></td><td><code>api/routers/reviews.py</code></td></tr>
+          <tr><td>gallery</td><td><code>domain/gallery/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/gallery.py</code></td><td><code>api/routers/gallery.py</code></td></tr>
+          <tr><td>contact</td><td><code>domain/contact/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/contact.py</code></td><td><code>api/routers/contact.py</code></td></tr>
+          <tr><td>stats</td><td><code>domain/stats/entity.py</code></td><td><code>ports.py</code></td><td><code>use_cases.py</code></td><td><code>repositories/stats.py</code></td><td><code>api/routers/admin.py</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Flujo de capas (implementado)</h3>
+      <pre>HTTP Request
+  → app/api/routers/*.py (schemas Pydantic, Depends)
+  → domain/*/use_cases.py (reglas de negocio)
+  → domain/*/ports.py (interfaces ABC)
+  → infrastructure/persistence/repositories/*.py
+  → infrastructure/persistence/orm/*.py
+  → Base de datos (SQLite / PostgreSQL)</pre>
+
+      <h3 id="arquitectura-deuda">3.2 Código legacy — <span class="badge badge-ok">eliminado</span></h3>
+      <p><strong>Estado mayo 2026:</strong> las carpetas <code>app/routers/</code>, <code>app/models/</code> y <code>app/schemas/</code> fueron <strong>eliminadas del repositorio</strong>. No quedan imports ni tests que las usen. La guardia <code>tests/test_no_legacy.py</code> evita que reaparezcan.</p>
+
+      <table>
+        <thead><tr><th>Antes (legacy)</th><th>Sustituto activo</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/routers/*.py</code></td><td><code>app/api/routers/*.py</code> + JWT</td><td><span class="badge badge-ok">Eliminado</span></td></tr>
+          <tr><td><code>app/models/*.py</code></td><td><code>app/infrastructure/persistence/orm/*.py</code></td><td><span class="badge badge-ok">Eliminado</span></td></tr>
+          <tr><td><code>app/schemas/*.py</code></td><td><code>app/api/schemas/*.py</code></td><td><span class="badge badge-ok">Eliminado</span></td></tr>
+        </tbody>
+      </table>
+      <p>Mapa endpoint → use case detallado en §3.4 (sigue siendo referencia histórica válida).</p>
+
+      <h3 id="legacy-verificado">3.3 Verificación de imports (evidencia)</h3>
+      <table>
+        <thead><tr><th>Comprobación</th><th>Resultado</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/main.py</code> monta routers</td><td>Solo <code>from app.api.routers import ...</code> — prefijos <code>/api/bookings</code>, <code>/api/services</code>, etc.</td></tr>
+          <tr><td>Imports <code>app.routers</code> / <code>app.models</code> / <code>app.schemas</code></td><td><span class="badge badge-ok">Ninguno</span> (carpetas borradas)</td></tr>
+          <tr><td><code>tests/</code></td><td>Cero imports de legacy</td></tr>
+          <tr><td><code>alembic/env.py</code></td><td>Importa <code>app.infrastructure.persistence.orm.*</code> — no <code>app.models</code></td></tr>
+          <tr><td><code>create_tables()</code> en <code>app/database.py</code></td><td>Importa ORM <strong>nuevo</strong>; usado por <code>scripts/create_admin.py</code></td></tr>
+        </tbody>
+      </table>
+
+      <h4>Lo que NO es legacy (errores frecuentes)</h4>
+      <table>
+        <thead><tr><th>Elemento</th><th>Por qué sigue siendo activo</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/api/**</code></td><td>Única capa HTTP montada</td></tr>
+          <tr><td><code>app/domain/**</code>, <code>app/infrastructure/**</code></td><td>Núcleo hexagonal y adaptadores</td></tr>
+          <tr><td><code>create_tables()</code> en <code>database.py</code></td><td>Función deprecated, pero implementación usa ORM nuevo</td></tr>
+          <tr><td><code>scripts/create_admin.py</code></td><td>Activo; usa <code>UserORM</code> de infrastructure</td></tr>
+          <tr><td><code>tests/integration/test_*_api.py</code></td><td>Estilo antiguo de tests, pero prueban la <strong>API nueva</strong></td></tr>
+          <tr><td><code>README.md</code> (cita models/schemas/routers)</td><td>Documentación desactualizada, no código ejecutable</td></tr>
+        </tbody>
+      </table>
+
+      <div class="solution">
+        <strong>Hecho:</strong> carpetas legacy eliminadas; <code>tests/test_no_legacy.py</code> en CI; <code>README.md</code> describe <code>app/api/</code>.
+      </div>
+
+      <h3 id="legacy-mapa">3.4 Mapa legacy → implementación actual</h3>
+      <p>Toda la funcionalidad que vivía en legacy está reimplementada bajo <code>app/api</code> + dominio + infraestructura. Las URLs públicas siguen siendo <code>/api/...</code> porque <code>app/main.py</code> registra los routers nuevos.</p>
+
+      <pre>LEGACY                          ACTUAL (stack activo)
+──────                          ────────────────────
+app/routers/*.py                app/api/routers/*.py
+app/schemas/*.py                app/api/schemas/*.py
+app/models/*.py                     ↓
+db.query(Model) en router       app/domain/*/use_cases.py
+                                    ↓
+                                app/infrastructure/persistence/repositories/*.py
+                                    ↓
+                                app/infrastructure/persistence/orm/*ORM.py</pre>
+
+      <h4>Funcionalidad que legacy no tenía (solo código actual)</h4>
+      <table>
+        <thead><tr><th>Funcionalidad</th><th>Router</th><th>Use case / módulo</th></tr></thead>
+        <tbody>
+          <tr><td>Login JWT</td><td><code>app/api/routers/auth.py</code></td><td><code>app/domain/auth/use_cases.py</code> → <code>LoginUseCase</code></td></tr>
+          <tr><td>Protección admin</td><td><code>app/api/dependencies/auth.py</code></td><td><code>GetCurrentAdminUseCase</code></td></tr>
+          <tr><td>Estadísticas</td><td><code>app/api/routers/admin.py</code></td><td><code>GetStatsUseCase</code> + <code>repositories/stats.py</code></td></tr>
+          <tr><td>Health</td><td><code>app/api/routers/health.py</code></td><td>—</td></tr>
+          <tr><td>Paginación</td><td><code>app/api/dependencies/pagination.py</code></td><td><code>app/api/schemas/pagination.py</code></td></tr>
+          <tr><td>Rate limiting</td><td>Varios routers API</td><td><code>app/core/rate_limit.py</code></td></tr>
+        </tbody>
+      </table>
+
+      <!-- BOOKINGS -->
+      <h4 id="legacy-bookings">3.4.1 Reservas (bookings)</h4>
+      <table>
+        <thead><tr><th>Capa</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td>Router HTTP</td><td><code>app/routers/bookings.py</code></td><td><code>app/api/routers/bookings.py</code></td></tr>
+          <tr><td>Schema Pydantic</td><td><code>app/schemas/booking.py</code></td><td><code>app/api/schemas/booking.py</code> (+ <code>DisponibilidadOut</code>)</td></tr>
+          <tr><td>Modelo SQLAlchemy</td><td><code>app/models/booking.py</code> → <code>Booking</code></td><td><code>app/infrastructure/persistence/orm/booking.py</code> → <code>BookingORM</code> (+ <code>deleted_at</code> B-22)</td></tr>
+          <tr><td>Entidad dominio</td><td>—</td><td><code>app/domain/booking/entity.py</code></td></tr>
+          <tr><td>Repositorio</td><td><code>db.query(Booking)</code> en router</td><td><code>app/infrastructure/persistence/repositories/booking.py</code></td></tr>
+          <tr><td>Notificaciones</td><td>—</td><td><code>app/infrastructure/notifications/booking_notifier.py</code></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Endpoint</th><th>Función legacy</th><th>Función actual</th><th>Auth / capas actuales</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /api/bookings/</code></td><td><code>listar_reservas</code></td><td><code>listar_reservas</code> (~l.94)</td><td><strong>Admin JWT</strong> · <code>ListBookingsUseCase</code> · paginado</td></tr>
+          <tr><td><code>GET /api/bookings/{id}</code></td><td><code>obtener_reserva</code></td><td><code>obtener_reserva</code> (~l.158)</td><td><strong>Admin JWT</strong> · <code>GetBookingUseCase</code></td></tr>
+          <tr><td><code>POST /api/bookings/</code></td><td><code>crear_reserva</code> (sin conflicto slot)</td><td><code>crear_reserva</code> (~l.61)</td><td>Público + rate limit · <code>CreateBookingUseCase</code> · 409 si slot ocupado · <code>SMTPBookingNotifier</code></td></tr>
+          <tr><td><code>PATCH /api/bookings/{id}</code></td><td><code>actualizar_reserva</code></td><td><code>actualizar_reserva</code> (~l.173)</td><td><strong>Admin JWT</strong> · <code>UpdateBookingUseCase</code></td></tr>
+          <tr><td><code>DELETE /api/bookings/{id}</code></td><td><code>cancelar_reserva</code> → <code>estado=cancelada</code></td><td><code>cancelar_reserva</code> (~l.191)</td><td><strong>Admin JWT</strong> · <code>CancelBookingUseCase</code> → soft-delete <code>deleted_at</code></td></tr>
+          <tr><td><code>GET .../disponibilidad</code></td><td><span class="badge badge-med">No existía</span></td><td><code>get_disponibilidad</code></td><td>Público + RL · <code>GetDisponibilidadUseCase</code></td></tr>
+          <tr><td><code>GET .../export</code></td><td><span class="badge badge-med">No existía</span></td><td><code>exportar_reservas_csv</code></td><td><strong>Admin JWT</strong> · <code>ExportBookingsCSVUseCase</code></td></tr>
+        </tbody>
+      </table>
+      <p>Use cases: <code>app/domain/booking/use_cases.py</code> — <code>CreateBookingUseCase</code>, <code>GetBookingUseCase</code>, <code>ListBookingsUseCase</code>, <code>UpdateBookingUseCase</code>, <code>CancelBookingUseCase</code>, <code>GetDisponibilidadUseCase</code>, <code>ExportBookingsCSVUseCase</code>.</p>
+
+      <!-- SERVICES -->
+      <h4 id="legacy-services">3.4.2 Servicios (services)</h4>
+      <table>
+        <thead><tr><th>Capa</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td>Router</td><td><code>app/routers/services.py</code></td><td><code>app/api/routers/services.py</code></td></tr>
+          <tr><td>Schema</td><td><code>app/schemas/service.py</code></td><td><code>app/api/schemas/service.py</code></td></tr>
+          <tr><td>ORM</td><td><code>app/models/service.py</code> → <code>Service</code></td><td><code>orm/service.py</code> → <code>ServiceORM</code></td></tr>
+          <tr><td>Repo / dominio</td><td>—</td><td><code>repositories/service.py</code>, <code>domain/service/*</code></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Endpoint</th><th>Legacy</th><th>Actual</th><th>Diferencia clave</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /api/services/</code></td><td>Público, sin auth</td><td><code>listar_servicios</code> · <code>ListServicesUseCase</code></td><td>Sigue público</td></tr>
+          <tr><td><code>GET /api/services/{id}</code></td><td>Público</td><td><code>GetServiceUseCase</code></td><td>Sigue público</td></tr>
+          <tr><td><code>POST /api/services/</code></td><td>Público (sin JWT)</td><td><code>crear_servicio</code></td><td><strong>Admin JWT</strong> · <code>CreateServiceUseCase</code></td></tr>
+          <tr><td><code>PUT /api/services/{id}</code></td><td>Público</td><td><code>actualizar_servicio</code></td><td><strong>Admin JWT</strong> · <code>UpdateServiceUseCase</code></td></tr>
+          <tr><td><code>DELETE /api/services/{id}</code></td><td>Público</td><td><code>eliminar_servicio</code></td><td><strong>Admin JWT</strong> · <code>DeleteServiceUseCase</code></td></tr>
+        </tbody>
+      </table>
+
+      <!-- REVIEWS -->
+      <h4 id="legacy-reviews">3.4.3 Reseñas (reviews)</h4>
+      <table>
+        <thead><tr><th>Capa</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td>Router</td><td><code>app/routers/reviews.py</code></td><td><code>app/api/routers/reviews.py</code></td></tr>
+          <tr><td>Schema</td><td><code>app/schemas/review.py</code></td><td><code>app/api/schemas/review.py</code></td></tr>
+          <tr><td>ORM</td><td><code>app/models/review.py</code></td><td><code>orm/review.py</code> → <code>ReviewORM</code></td></tr>
+          <tr><td>Use cases</td><td>—</td><td><code>CreateReviewUseCase</code>, <code>ListReviewsUseCase</code>, <code>ToggleVisibilityUseCase</code>, <code>DeleteReviewUseCase</code></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Endpoint</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /api/reviews/</code></td><td>Lista plana <code>List[ReviewOut]</code></td><td><code>PagedResponse</code> · <code>ListReviewsUseCase</code></td></tr>
+          <tr><td><code>POST /api/reviews/</code></td><td><code>crear_resena</code></td><td>+ rate limit · <code>CreateReviewUseCase</code></td></tr>
+          <tr><td><code>PATCH /{id}/visibilidad</code></td><td>Sin JWT</td><td><strong>Admin JWT</strong> · <code>ToggleVisibilityUseCase</code></td></tr>
+          <tr><td><code>DELETE /{id}</code></td><td>Sin JWT</td><td><strong>Admin JWT</strong> · <code>DeleteReviewUseCase</code></td></tr>
+        </tbody>
+      </table>
+
+      <!-- GALLERY -->
+      <h4 id="legacy-gallery">3.4.4 Galería (gallery)</h4>
+      <table>
+        <thead><tr><th>Capa</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td>Router</td><td><code>app/routers/gallery.py</code> (uuid + shutil en router)</td><td><code>app/api/routers/gallery.py</code></td></tr>
+          <tr><td>Storage</td><td>Lógica inline <code>UPLOAD_DIR</code></td><td><code>app/infrastructure/storage/__init__.py</code> → <code>get_file_storage()</code> (local o Cloudinary)</td></tr>
+          <tr><td>Extensiones</td><td>Validación en router</td><td><code>app/domain/gallery/ports.py</code> (<code>ALLOWED_EXTENSIONS</code>)</td></tr>
+          <tr><td>ORM</td><td><code>app/models/gallery.py</code> → <code>GalleryImage</code></td><td><code>orm/gallery.py</code> → <code>GalleryORM</code></td></tr>
+          <tr><td>Use cases</td><td>—</td><td><code>ListImagesUseCase</code>, <code>UploadImageUseCase</code>, <code>DeleteImageUseCase</code></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Endpoint</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /api/gallery/</code></td><td>Lista sin paginar</td><td>Paginado · <code>ListImagesUseCase</code></td></tr>
+          <tr><td><code>POST /api/gallery/upload</code></td><td>Sin JWT</td><td><strong>Admin JWT</strong> · <code>UploadImageUseCase</code> + storage</td></tr>
+          <tr><td><code>DELETE /api/gallery/{id}</code></td><td>Sin JWT · <code>os.remove</code> + delete BD</td><td><strong>Admin JWT</strong> · <code>DeleteImageUseCase</code> (repo + storage)</td></tr>
+        </tbody>
+      </table>
+
+      <!-- CONTACT -->
+      <h4 id="legacy-contact">3.4.5 Contacto (contact)</h4>
+      <table>
+        <thead><tr><th>Capa</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td>Router</td><td><code>app/routers/contact.py</code> (stub: <code>print</code>, sin BD)</td><td><code>app/api/routers/contact.py</code></td></tr>
+          <tr><td>Schema</td><td><code>app/schemas/contact.py</code> → <code>ContactMessage</code> (<code>email: str</code>)</td><td><code>app/api/schemas/contact.py</code> → <code>ContactMessageIn</code> (<code>EmailStr</code>), <code>ContactMessageOut</code></td></tr>
+          <tr><td>ORM</td><td><em>No había model</em></td><td><code>orm/contact.py</code> → <code>ContactMessageORM</code></td></tr>
+          <tr><td>Persistencia</td><td>—</td><td><code>repositories/contact.py</code> + <code>SendContactMessageUseCase</code></td></tr>
+          <tr><td>Email</td><td>TODO / print</td><td><code>SMTPContactNotifier</code></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Endpoint</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td><code>POST /api/contact/</code></td><td>200, <code>ok</code>, sin <code>id</code>, no persiste</td><td><strong>201</strong>, persiste, devuelve <code>id</code> · rate limit</td></tr>
+          <tr><td><code>GET /api/contact/</code></td><td><span class="badge badge-med">No existía</span></td><td>Admin · <code>ListContactMessagesUseCase</code></td></tr>
+          <tr><td><code>PATCH /api/contact/{id}/leido</code></td><td><span class="badge badge-med">No existía</span></td><td>Admin · <code>MarkMessageReadUseCase</code></td></tr>
+        </tbody>
+      </table>
+
+      <h4>3.4.6 Comparativa de comportamiento (legacy vs actual)</h4>
+      <table>
+        <thead><tr><th>Aspecto</th><th>Legacy</th><th>Actual</th></tr></thead>
+        <tbody>
+          <tr><td>Autenticación en mutaciones</td><td>No</td><td><code>get_current_admin</code> en admin</td></tr>
+          <tr><td>Reservas: conflicto de slot</td><td>No</td><td>409 <code>SlotOcupado</code></td></tr>
+          <tr><td>Reservas: cancelar</td><td><code>estado = cancelada</code></td><td><code>deleted_at</code> (soft-delete)</td></tr>
+          <tr><td>Contacto</td><td><code>print</code></td><td>BD + SMTP notifier</td></tr>
+          <tr><td>Galería upload</td><td>Disco en router</td><td>Use case + Local/Cloudinary</td></tr>
+          <tr><td>Listados admin</td><td>Sin paginación</td><td><code>PagedResponse</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Inconsistencia: cancelación / soft-delete de reservas</h3>
+      <p><strong>Archivo:</strong> <code>app/infrastructure/persistence/repositories/booking.py</code> (método <code>delete</code>, líneas ~111–125)</p>
+      <p>El soft-delete (B-22) fija <code>deleted_at</code> pero no cambia <code>estado</code> a <code>"cancelada"</code>.
+        <code>is_slot_available</code> filtra por <code>deleted_at IS NULL</code> y <code>estado != "cancelada"</code>.
+        Comportamiento funcional del slot: correcto vía <code>_active()</code>; semántica de negocio y export CSV pueden confundir.</p>
+      <div class="solution">
+        <strong>Solución:</strong> En <code>delete()</code> llamar también <code>orm.estado = "cancelada"</code>, o renombrar el puerto a <code>soft_delete()</code> y documentar en <code>app/domain/booking/ports.py</code> y use cases.
+      </div>
+
+      <h3 id="arquitectura-di">3.5 Inyección de dependencias</h3>
+      <p><strong>Patrón actual:</strong> composition root manual en cada handler.</p>
+      <pre>repo = SQLAlchemyBookingRepository(db)
+uc = CreateBookingUseCase(repo, notifier)
+result = uc.execute(...)</pre>
+      <p><strong>Lo que existe:</strong></p>
+      <ul>
+        <li><code>app/database.py</code> → <code>get_db()</code> (única dependencia compartida masiva)</li>
+        <li><code>app/api/dependencies/auth.py</code> → <code>get_current_admin</code></li>
+        <li><code>app/api/dependencies/pagination.py</code> → <code>PaginationParams</code></li>
+        <li><code>app/core/rate_limit.py</code> → <code>limiter(max_requests, window_seconds)</code></li>
+        <li><code>app/infrastructure/storage/__init__.py</code> → <code>get_file_storage()</code></li>
+      </ul>
+      <p><strong>Violación hexagonal estricta:</strong> routers importan clases concretas <code>SQLAlchemy*</code> de infrastructure, no solo puertos.</p>
+      <div class="solution">
+        <strong>Solución opcional:</strong> Crear <code>app/api/dependencies/composition.py</code> con factories <code>Depends(get_booking_repo)</code>, <code>Depends(get_create_booking_uc)</code>, etc.
+      </div>
+    </section>
+
+    <!-- 4. SEGURIDAD -->
+    <section id="seguridad">
+      <h2>4. Auditoría de seguridad</h2>
+
+      <h3 id="seg-critico">4.1 Crítico — corregir antes de producción</h3>
+
+      <h4>4.1.1 Secretos y DEBUG por defecto</h4>
+      <p><strong>Archivo:</strong> <code>app/config.py</code> (líneas 9–17 aprox.)</p>
+      <pre>DEBUG: bool = True
+SECRET_KEY: str = "changeme-secret-key-in-production"
+ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 h
+DATABASE_URL: str = "sqlite:///./bulls_barbershop.db"</pre>
+      <p><strong>Archivo relacionado:</strong> <code>app/main.py</code> — <code>docs_url</code> y <code>redoc_url</code> solo ocultos si <code>not settings.DEBUG</code>.</p>
+      <p><strong>Impacto:</strong> firma JWT predecible; documentación API expuesta; tokens falsificables.</p>
+      <div class="solution">
+        <strong>Soluciones:</strong>
+        <ul>
+          <li>Añadir validación en <code>Settings</code> o al arranque: si entorno prod y <code>SECRET_KEY</code> contiene "changeme" → <code>RuntimeError</code>.</li>
+          <li>Forzar <code>DEBUG=false</code> en <code>docker/docker-compose.prod.yml</code> y documentar en <code>docker/DOCKER.md</code>.</li>
+          <li>Generar <code>SECRET_KEY</code> con <code>openssl rand -hex 32</code> en despliegue.</li>
+        </ul>
+      </div>
+
+      <h4>4.1.2 Reseñas ocultas accesibles sin autenticación</h4>
+      <p><strong>Archivo:</strong> <code>app/api/routers/reviews.py</code> — <code>GET /api/reviews/</code></p>
+      <p>Query param <code>solo_visibles: bool = True</code> sin <code>Depends(get_current_admin)</code> cuando es <code>false</code>.</p>
+      <p><strong>Repositorio:</strong> <code>app/infrastructure/persistence/repositories/review.py</code> — filtra <code>visible</code> solo si <code>solo_visibles=True</code>.</p>
+      <p><strong>Explotación:</strong> <code>GET /api/reviews/?solo_visibles=false</code> devuelve reseñas moderadas/ocultas.</p>
+      <div class="solution">
+        <strong>Soluciones:</strong>
+        <ul>
+          <li>Opción A: Si <code>solo_visibles is False</code>, exigir <code>admin: AdminUser = Depends(get_current_admin)</code>.</li>
+          <li>Opción B: Endpoint público solo con <code>solo_visibles=true</code> fijo; crear <code>GET /api/reviews/admin</code> protegido.</li>
+          <li>Añadir test: petición pública con <code>solo_visibles=false</code> debe devolver 401.</li>
+        </ul>
+      </div>
+
+      <h4>4.1.3 Servicios inactivos listables públicamente</h4>
+      <p><strong>Archivo:</strong> <code>app/api/routers/services.py</code> — <code>solo_activos: bool = True</code> en query público.</p>
+      <p><strong>Test que lo documenta:</strong> <code>tests/integration/test_services_api.py</code></p>
+      <div class="solution">
+        <strong>Solución:</strong> Misma estrategia que reviews: JWT obligatorio para <code>solo_activos=false</code>.</div>
+
+      <h4>4.1.4 Login sin rate limiting</h4>
+      <p><strong>Archivo:</strong> <code>app/api/routers/auth.py</code> — <code>POST /login</code> (líneas 16–38)</p>
+      <p>No usa <code>Depends(limiter(...))</code>. Contacto, bookings y reviews POST sí limitan.</p>
+      <div class="solution">
+        <strong>Solución:</strong> Añadir <code>Depends(limiter(max_requests=5, window_seconds=60))</code> al login.
+        Considerar backoff exponencial o lockout tras N intentos por IP/email.</div>
+
+      <h4>4.1.5 Routers legacy sin autenticación</h4>
+      <table>
+        <thead><tr><th>Archivo legacy</th><th>Operaciones sin JWT</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/routers/bookings.py</code></td><td>Listar, crear, editar, cancelar reservas</td></tr>
+          <tr><td><code>app/routers/gallery.py</code></td><td>Subir y eliminar imágenes</td></tr>
+          <tr><td><code>app/routers/services.py</code></td><td>CRUD servicios</td></tr>
+          <tr><td><code>app/routers/reviews.py</code></td><td>Moderación reseñas</td></tr>
+          <tr><td><code>app/routers/contact.py</code></td><td>Contacto (stub antiguo)</td></tr>
+        </tbody>
+      </table>
+      <div class="solution"><strong>Hecho:</strong> carpetas legacy eliminadas; guardia <code>tests/test_no_legacy.py</code>.</div>
+
+      <h3 id="seg-alto">4.2 Alto</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Hallazgo</th><th>Archivos</th><th>Solución propuesta</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>SEC-05</td>
+            <td>Upload galería: lectura completa en memoria, solo extensión</td>
+            <td><code>app/api/routers/gallery.py</code>, <code>domain/gallery/ports.py</code>, <code>infrastructure/storage/local.py</code>, <code>cloudinary_storage.py</code></td>
+            <td>Límite MAX_BYTES; validar con Pillow; rechazar doble extensión; usar <code>content_type</code> como hint secundario</td>
+          </tr>
+          <tr>
+            <td>SEC-06</td>
+            <td>Rate limit in-memory, spoofing X-Forwarded-For</td>
+            <td><code>app/core/rate_limit.py</code>, <code>app/config.py</code> (RATE_LIMIT_ENABLED)</td>
+            <td>Redis + lista de proxies de confianza; desactivar lectura XFF sin proxy</td>
+          </tr>
+          <tr>
+            <td>SEC-07</td>
+            <td>JWT 24h sin revocación</td>
+            <td><code>app/config.py</code>, <code>infrastructure/security/jwt_service.py</code></td>
+            <td>Reducir TTL; refresh tokens; blacklist en Redis (opcional)</td>
+          </tr>
+          <tr>
+            <td>SEC-08</td>
+            <td>Schemas booking/review sin max_length ni EmailStr</td>
+            <td><code>app/api/schemas/booking.py</code>, <code>app/api/schemas/review.py</code></td>
+            <td>Pydantic <code>Field(max_length=...)</code>, <code>EmailStr</code> donde aplique</td>
+          </tr>
+          <tr>
+            <td>SEC-09</td>
+            <td>Health expone db_error al público</td>
+            <td><code>app/api/routers/health.py</code></td>
+            <td>En prod: log interno; respuesta genérica "error"</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="seg-medio">4.3 Medio y bajo</h3>
+      <ul>
+        <li><strong>CORS:</strong> <code>app/main.py</code> — <code>allow_credentials=True</code>; prod depende de <code>CORS_ORIGINS</code> en <code>app/config.py</code>.</li>
+        <li><strong>Sin cabeceras seguridad HTTP</strong> (HSTS, CSP, X-Frame-Options) — delegar a nginx/traefik.</li>
+        <li><code>.env</code> y <code>.env.example</code> en .gitignore — variables documentadas en README (decisión del equipo).</li>
+        <li><strong>Logging PII:</strong> <code>app/infrastructure/notifications/contact_notifier.py</code> loguea mensaje completo.</li>
+        <li><strong>SMTP:</strong> <code>app/infrastructure/notifications/smtp_email.py</code> — errores tragados; sanitizar newlines en asuntos.</li>
+        <li><strong>Path traversal en delete local:</strong> <code>infrastructure/storage/local.py</code> si <code>imagen_url</code> en BD fuera manipulada.</li>
+        <li><strong>Migraciones en startup:</strong> <code>app/main.py</code> + <code>app/database.py</code> — riesgo operativo multi-réplica.</li>
+      </ul>
+
+      <h3 id="seg-positivo">4.4 Aspectos positivos de seguridad</h3>
+      <ul>
+        <li>Bcrypt vía <code>app/infrastructure/security/password_hasher.py</code></li>
+        <li>Mensaje uniforme "Credenciales inválidas" en <code>app/domain/auth/use_cases.py</code></li>
+        <li><code>jwt.decode(..., algorithms=[settings.ALGORITHM])</code> en <code>jwt_service.py</code></li>
+        <li>Mutaciones admin con <code>get_current_admin</code> en <code>app/api/dependencies/auth.py</code></li>
+        <li>SQLAlchemy ORM — riesgo SQLi bajo en repositorios actuales</li>
+        <li>Rate limit en formularios públicos (contact, crear review, crear booking)</li>
+      </ul>
+
+      <h3>Flujo JWT / autenticación (archivos clave)</h3>
+      <table>
+        <thead><tr><th>Paso</th><th>Archivo</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Login</td><td><code>app/api/routers/auth.py</code></td><td>OAuth2 form: <code>username</code> = email</td></tr>
+          <tr><td>Caso de uso</td><td><code>app/domain/auth/use_cases.py</code> → <code>LoginUseCase</code></td><td>Token con <code>{"sub": str(user.id)}</code></td></tr>
+          <tr><td>JWT</td><td><code>app/infrastructure/security/jwt_service.py</code></td><td>HS256, exp según settings</td></tr>
+          <tr><td>Validación</td><td><code>GetCurrentAdminUseCase</code></td><td><code>find_by_id(int(sub))</code></td></tr>
+          <tr><td>Dependencia</td><td><code>app/api/dependencies/auth.py</code></td><td><code>OAuth2PasswordBearer</code>, 401 + WWW-Authenticate</td></tr>
+          <tr><td>Fixture tests</td><td><code>tests/conftest.py</code></td><td><code>admin_token</code> debe usar <code>str(admin_user.id)</code> en sub</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 5. DATOS -->
+    <section id="datos">
+      <h2>5. Base de datos y persistencia</h2>
+
+      <h3>5.1 Archivos centrales</h3>
+      <ul class="file-list">
+        <li><code>app/database.py</code> — engine, SessionLocal, get_db, run_migrations, create_tables (deprecated)</li>
+        <li><code>alembic/env.py</code> — configuración migraciones</li>
+        <li><code>alembic/versions/0001_initial_schema.py</code> — esquema inicial (6 tablas)</li>
+        <li><code>alembic.ini</code> — configuración Alembic</li>
+      </ul>
+
+      <h3>5.2 Tablas ORM activas</h3>
+      <table>
+        <thead><tr><th>Tabla</th><th>ORM</th><th>Repositorio</th></tr></thead>
+        <tbody>
+          <tr><td>admin_users</td><td><code>orm/user.py</code> → UserORM</td><td><code>repositories/user.py</code></td></tr>
+          <tr><td>services</td><td><code>orm/service.py</code></td><td><code>repositories/service.py</code></td></tr>
+          <tr><td>bookings</td><td><code>orm/booking.py</code> (deleted_at B-22)</td><td><code>repositories/booking.py</code></td></tr>
+          <tr><td>reviews</td><td><code>orm/review.py</code></td><td><code>repositories/review.py</code></td></tr>
+          <tr><td>gallery</td><td><code>orm/gallery.py</code></td><td><code>repositories/gallery.py</code></td></tr>
+          <tr><td>contact_messages</td><td><code>orm/contact.py</code></td><td><code>repositories/contact.py</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.3 Tests de repositorios</h3>
+      <table>
+        <thead><tr><th>Repositorio</th><th>Test dedicado</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td>SQLAlchemyBookingRepository</td><td><code>tests/integration/repositories/test_booking_repository.py</code></td><td><span class="badge badge-ok">Buena cobertura</span></td></tr>
+          <tr><td>SQLAlchemyServiceRepository</td><td><code>tests/integration/repositories/test_service_repository.py</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+          <tr><td>SQLAlchemyUserRepository</td><td>—</td><td><span class="badge badge-med">Solo vía HTTP auth</span></td></tr>
+          <tr><td>SQLAlchemyContactRepository</td><td>—</td><td><span class="badge badge-med">Parcial API</span></td></tr>
+          <tr><td>SQLAlchemyReviewRepository</td><td>—</td><td><span class="badge badge-med">Parcial API</span></td></tr>
+          <tr><td>SQLAlchemyGalleryRepository</td><td>—</td><td><span class="badge badge-med">test_gallery_api</span></td></tr>
+          <tr><td>SQLAlchemyStatsRepository</td><td>—</td><td><span class="badge badge-high">Casi sin tests</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.4 Hueco: tests vs migraciones Alembic</h3>
+      <p><code>tests/conftest.py</code> parchea <code>run_migrations</code> y usa <code>Base.metadata.create_all()</code>.
+        El esquema de test puede divergir de producción si se añaden migraciones sin actualizar fixtures.</p>
+      <div class="solution">
+        <strong>Solución:</strong> Test de integración opcional <code>alembic upgrade head</code> en SQLite fichero en CI.</div>
+    </section>
+
+    <!-- 6. API -->
+    <section id="api-dominio">
+      <h2>6. API, dominio y manejo de errores</h2>
+
+      <h3>6.1 Routers activos (montados en main.py)</h3>
+      <table>
+        <thead><tr><th>Router</th><th>Prefijo</th><th>Archivo</th></tr></thead>
+        <tbody>
+          <tr><td>health</td><td>/api/health</td><td><code>app/api/routers/health.py</code></td></tr>
+          <tr><td>auth</td><td>/api/auth</td><td><code>app/api/routers/auth.py</code></td></tr>
+          <tr><td>admin</td><td>/api/admin</td><td><code>app/api/routers/admin.py</code></td></tr>
+          <tr><td>services</td><td>/api/services</td><td><code>app/api/routers/services.py</code></td></tr>
+          <tr><td>bookings</td><td>/api/bookings</td><td><code>app/api/routers/bookings.py</code></td></tr>
+          <tr><td>reviews</td><td>/api/reviews</td><td><code>app/api/routers/reviews.py</code></td></tr>
+          <tr><td>gallery</td><td>/api/gallery</td><td><code>app/api/routers/gallery.py</code></td></tr>
+          <tr><td>contact</td><td>/api/contact</td><td><code>app/api/routers/contact.py</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 Patrón de errores dominio → HTTP</h3>
+      <ul>
+        <li>Excepciones en <code>app/domain/*/ports.py</code>: BookingNotFound, SlotOcupado, InvalidCredentials, TokenInvalid, etc.</li>
+        <li>Routers: <code>try/except</code> → <code>HTTPException</code> (401, 404, 409, 400)</li>
+        <li><strong>No hay</strong> <code>@app.exception_handler</code> global</li>
+        <li>Contacto: fallo notifier → log + no relanza (<code>app/domain/contact/use_cases.py</code>)</li>
+      </ul>
+
+      <h3>6.3 Rate limiting por endpoint</h3>
+      <table>
+        <thead><tr><th>Endpoint</th><th>¿Limitado?</th><th>Archivo</th></tr></thead>
+        <tbody>
+          <tr><td>POST /api/auth/login</td><td>❌ No</td><td><code>auth.py</code></td></tr>
+          <tr><td>POST /api/contact/</td><td>✅ Sí (5/min)</td><td><code>contact.py</code></td></tr>
+          <tr><td>POST /api/reviews/</td><td>✅ Sí</td><td><code>reviews.py</code></td></tr>
+          <tr><td>POST /api/bookings/</td><td>✅ Sí</td><td><code>bookings.py</code></td></tr>
+          <tr><td>GET disponibilidad bookings</td><td>✅ Sí</td><td><code>bookings.py</code></td></tr>
+          <tr><td>Gallery upload</td><td>❌ No</td><td><code>gallery.py</code></td></tr>
+          <tr><td>Export CSV admin</td><td>❌ No</td><td><code>bookings.py</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.4 Logging</h3>
+      <p><strong>Archivo:</strong> <code>app/core/logging.py</code> — setup JSON en prod, middleware <code>api.access</code>, silencia uvicorn/sqlalchemy ruido.</p>
+      <p><strong>Huecos:</strong> sin tests de formatter/middleware; inconsistencia <code>logging.getLogger</code> vs <code>get_logger</code> en dominio contact.</p>
+    </section>
+
+    <!-- 7. TESTS -->
+    <section id="tests">
+      <h2>7. Tests, cobertura y calidad</h2>
+
+      <h3>7.1 Configuración</h3>
+      <ul class="file-list">
+        <li><code>pytest.ini</code> — testpaths=tests, markers unit/integration, sin --cov por defecto</li>
+        <li><code>tests/conftest.py</code> — SQLite :memory: + StaticPool, override get_db, admin fixtures</li>
+        <li><code>.coveragerc</code> — omite legacy, storage/*, smtp_email.py</li>
+        <li><code>requirements-dev.txt</code> — pytest, pytest-cov, pytest-mock, httpx</li>
+      </ul>
+
+      <p><strong>Comando habitual del equipo:</strong></p>
+      <pre>python -m pytest --cov=app --cov-report=term -v</pre>
+      <p class="muted">No genera <code>htmlcov/</code> salvo que añadas <code>--cov-report=html</code>. Carpetas <code>htmlcov/</code> y <code>.coverage</code> están en <code>.gitignore</code>.</p>
+
+      <h3 id="tests-fallos">7.2 Categorías de fallos corregidos (sesión pytest)</h3>
+      <p>Antes de las correcciones: <strong>90 failed, 126 passed</strong>. Después: <strong>216 passed</strong>.</p>
+      <table>
+        <thead><tr><th>Categoría</th><th>Síntoma</th><th>Causa</th><th>Archivo corregido</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>JWT sub incorrecto</td>
+            <td><code>ValueError: invalid literal for int() with base 10: 'admin@test.com'</code></td>
+            <td><code>admin_token</code> usaba email en lugar de id</td>
+            <td><code>tests/conftest.py</code></td>
+          </tr>
+          <tr>
+            <td>SQLite :memory: multi-conexión</td>
+            <td><code>no such table: bookings</code> (y otras tablas)</td>
+            <td>Cada conexión = BD vacía; TestClient en otro hilo</td>
+            <td><code>tests/conftest.py</code> → StaticPool</td>
+          </tr>
+          <tr>
+            <td>Tests legacy desalineados</td>
+            <td>422 en login; AttributeError LocalFileStorage; 200 vs 201 contacto</td>
+            <td>JSON vs OAuth2 form; mock incorrecto; contrato API cambiado</td>
+            <td><code>test_auth_api.py</code>, <code>test_gallery_api.py</code>, <code>test_contact_api.py</code></td>
+          </tr>
+          <tr>
+            <td>Alembic en startup tests</td>
+            <td>Alembic logs en setup</td>
+            <td>Parche solo en database, no en main</td>
+            <td><code>tests/conftest.py</code> → patch app.main.run_migrations</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="tests-duplicados">7.3 Duplicación de suites (mantenimiento)</h3>
+      <table>
+        <thead><tr><th>Suite legacy</th><th>Suite nueva</th><th>Notas</th></tr></thead>
+        <tbody>
+          <tr><td><code>tests/integration/test_auth_api.py</code></td><td><code>tests/integration/api/test_auth.py</code></td><td>Legacy incluye stats admin</td></tr>
+          <tr><td><code>tests/integration/test_bookings_api.py</code></td><td><code>tests/integration/api/test_bookings.py</code></td><td>Export solo en test_bookings_export.py</td></tr>
+          <tr><td><code>tests/integration/test_services_api.py</code></td><td><code>tests/integration/api/test_services.py</code></td><td>Legacy más exhaustivo</td></tr>
+          <tr><td><code>tests/integration/test_reviews_api.py</code></td><td><code>tests/integration/api/test_reviews.py</code></td><td>Legacy 15 vs nueva 5 tests</td></tr>
+          <tr><td><code>tests/integration/test_contact_api.py</code></td><td><code>tests/integration/api/test_contact.py</code></td><td>Nueva más completa admin</td></tr>
+          <tr><td><code>tests/integration/test_gallery_api.py</code></td><td>—</td><td>Sin equivalente en api/</td></tr>
+          <tr><td><code>tests/unit/test_booking_*.py</code></td><td><code>tests/unit/domain/test_booking_*.py</code></td><td>Duplicado conceptual</td></tr>
+        </tbody>
+      </table>
+      <div class="solution">
+        <strong>Recomendación:</strong> Migrar casos faltantes a <code>integration/api/</code> y eliminar <code>test_*_api.py</code> legacy para reducir ~40–50% tiempo CI.</div>
+
+      <h3>7.4 Puntos ciegos de cobertura</h3>
+      <ul>
+        <li><code>app/api/routers/admin.py</code> + stats SQL</li>
+        <li><code>app/domain/auth/use_cases.py</code>, <code>jwt_service.py</code></li>
+        <li><code>app/infrastructure/storage/*</code> (omitido en .coveragerc)</li>
+        <li><code>app/database.py</code> run_migrations</li>
+        <li><code>app/core/logging.py</code></li>
+        <li>SPA catch-all en main.py</li>
+      </ul>
+    </section>
+
+    <!-- 8. OPERACION -->
+    <section id="operacion">
+      <h2>8. Operación, Docker y DX</h2>
+      <ul class="file-list">
+        <li><code>docker/Dockerfile</code> — usuario no-root en prod, proxy-headers</li>
+        <li><code>docker/docker-compose.yml</code> — desarrollo</li>
+        <li><code>docker/docker-compose.prod.yml</code> — carga .env, healthcheck</li>
+        <li><code>docker/DOCKER.md</code> — documentación SECRET_KEY, DEBUG, volúmenes</li>
+        <li><code>app/main.py</code> — monta /uploads como StaticFiles</li>
+        <li><code>scripts/create_admin.py</code> — crear admin (usa create_tables deprecated)</li>
+      </ul>
+      <p><strong>SQLite por defecto</strong> limita a un worker Uvicorn; PostgreSQL recomendado en producción según comentarios en Dockerfile.</p>
+    </section>
+
+    <!-- 9. DEPENDENCIAS -->
+    <section id="dependencias">
+      <h2>9. Dependencias</h2>
+      <p><strong>Producción:</strong> <code>requirements.txt</code></p>
+      <pre>fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+sqlalchemy>=2.0.36
+pydantic>=2.10.0
+alembic>=1.14.0
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
+pillow>=11.0.0  ← no usado en validación upload actual
+cloudinary>=1.40.0</pre>
+      <p><strong>Desarrollo:</strong> <code>requirements-dev.txt</code> — pytest, pytest-cov, pytest-mock, httpx</p>
+      <p><strong>Riesgo:</strong> solo límites inferiores (<code>>=</code>), sin lockfile — builds no reproducibles; CVEs en parches menores.</p>
+      <div class="solution">
+        <strong>Solución:</strong> pip-tools / poetry lock + pip-audit o Dependabot en CI.</div>
+    </section>
+
+    <!-- 10. PLAN -->
+    <section id="plan">
+      <h2>10. Plan de acción priorizado</h2>
+
+      <h3>Fase 1 — Seguridad (1–2 días)</h3>
+      <ol>
+        <li>Validación startup: SECRET_KEY y DEBUG en producción (<code>app/config.py</code>)</li>
+        <li>JWT obligatorio para <code>solo_visibles=false</code> y <code>solo_activos=false</code></li>
+        <li>Rate limit en <code>POST /api/auth/login</code></li>
+        <li><s>Eliminar legacy</s> — <strong>hecho</strong></li>
+      </ol>
+
+      <h3>Fase 2 — Calidad y contratos (3–5 días)</h3>
+      <ol>
+        <li>Schemas Pydantic estrictos (booking, review)</li>
+        <li>Upload: límite bytes + Pillow</li>
+        <li>Alinear soft-delete / estado cancelada en bookings</li>
+        <li>Health: no exponer db_error en prod</li>
+      </ol>
+
+      <h3>Fase 3 — Mantenibilidad (~1 semana)</h3>
+      <ol>
+        <li>Consolidar tests en <code>integration/api/</code> y <code>unit/domain/</code></li>
+        <li>Test Alembic en CI</li>
+        <li>README con variables de entorno documentadas</li>
+        <li>Lockfile dependencias</li>
+        <li>Opcional: dependencies/composition.py</li>
+      </ol>
+
+      <h3>Fase 4 — Escala (cuando haya tráfico)</h3>
+      <ol>
+        <li>Rate limit Redis</li>
+        <li>PostgreSQL obligatorio</li>
+        <li>JWT más corto + refresh/revocación</li>
+      </ol>
+    </section>
+
+    <!-- 11. INDICE ARCHIVOS -->
+    <section id="indice-archivos">
+      <h2>11. Índice completo de archivos relevantes</h2>
+
+      <h3>app/ — Código activo</h3>
+      <ul class="file-list">
+        <li>app/main.py</li>
+        <li>app/config.py</li>
+        <li>app/database.py</li>
+        <li>app/core/logging.py</li>
+        <li>app/core/rate_limit.py</li>
+        <li>app/api/dependencies/auth.py</li>
+        <li>app/api/dependencies/pagination.py</li>
+        <li>app/api/routers/admin.py</li>
+        <li>app/api/routers/auth.py</li>
+        <li>app/api/routers/bookings.py</li>
+        <li>app/api/routers/contact.py</li>
+        <li>app/api/routers/gallery.py</li>
+        <li>app/api/routers/health.py</li>
+        <li>app/api/routers/reviews.py</li>
+        <li>app/api/routers/services.py</li>
+        <li>app/api/schemas/*.py (auth, booking, contact, gallery, pagination, review, service, stats)</li>
+        <li>app/domain/auth/entity.py, ports.py, use_cases.py</li>
+        <li>app/domain/booking/entity.py, ports.py, use_cases.py</li>
+        <li>app/domain/contact/entity.py, ports.py, use_cases.py</li>
+        <li>app/domain/gallery/entity.py, ports.py, use_cases.py</li>
+        <li>app/domain/review/entity.py, ports.py, use_cases.py</li>
+        <li>app/domain/service/entity.py, ports.py, use_cases.py</li>
+        <li>app/domain/stats/entity.py, ports.py, use_cases.py</li>
+        <li>app/infrastructure/persistence/orm/*.py</li>
+        <li>app/infrastructure/persistence/repositories/*.py</li>
+        <li>app/infrastructure/security/jwt_service.py</li>
+        <li>app/infrastructure/security/password_hasher.py</li>
+        <li>app/infrastructure/notifications/booking_notifier.py</li>
+        <li>app/infrastructure/notifications/contact_notifier.py</li>
+        <li>app/infrastructure/notifications/smtp_email.py</li>
+        <li>app/infrastructure/storage/__init__.py</li>
+        <li>app/infrastructure/storage/local.py</li>
+        <li>app/infrastructure/storage/cloudinary_storage.py</li>
+      </ul>
+
+      <p class="muted"><em>Las carpetas legacy (<code>app/routers</code>, <code>app/models</code>, <code>app/schemas</code>) fueron eliminadas. Ver §13.</em></p>
+
+      <h3>tests/</h3>
+      <ul class="file-list">
+        <li>tests/conftest.py</li>
+        <li>tests/integration/api/test_auth.py</li>
+        <li>tests/integration/api/test_bookings.py</li>
+        <li>tests/integration/api/test_contact.py</li>
+        <li>tests/integration/api/test_health.py</li>
+        <li>tests/integration/api/test_reviews.py</li>
+        <li>tests/integration/api/test_services.py</li>
+        <li>tests/integration/test_auth_api.py</li>
+        <li>tests/integration/test_bookings_api.py</li>
+        <li>tests/integration/test_bookings_export.py</li>
+        <li>tests/integration/test_contact_api.py</li>
+        <li>tests/integration/test_gallery_api.py</li>
+        <li>tests/integration/test_reviews_api.py</li>
+        <li>tests/integration/test_services_api.py</li>
+        <li>tests/integration/repositories/test_booking_repository.py</li>
+        <li>tests/integration/repositories/test_service_repository.py</li>
+        <li>tests/unit/domain/test_booking_entity.py</li>
+        <li>tests/unit/domain/test_booking_use_cases.py</li>
+        <li>tests/unit/use_cases/test_contact_use_cases.py</li>
+        <li>tests/unit/test_booking_entity.py</li>
+        <li>tests/unit/test_booking_use_cases.py</li>
+        <li>tests/unit/test_review_entity.py</li>
+        <li>tests/unit/test_review_use_cases.py</li>
+        <li>tests/unit/test_rate_limit.py</li>
+      </ul>
+    </section>
+
+    <!-- 13. ESTADO ACTUAL -->
+    <section id="estado-actual">
+      <h2>13. Estado actual del proyecto (post-limpieza)</h2>
+      <p>Actualización tras eliminar legacy y commit <code>3b0d30f</code> (seguridad + validación).</p>
+
+      <div class="score-grid">
+        <div class="score-card"><div class="label">Tests</div><div class="grade" style="color:#6ee7b7">194 ✓</div><div class="muted">incl. test_no_legacy</div></div>
+        <div class="score-card"><div class="label">Legacy</div><div class="grade" style="color:#6ee7b7">0</div><div class="muted">carpetas borradas</div></div>
+        <div class="score-card"><div class="label">Cobertura</div><div class="grade" style="color:#60a5fa">~94%</div><div class="muted">sin omit legacy</div></div>
+        <div class="score-card"><div class="label">Alcance infra</div><div class="muted">1 barbería · 1 proceso API · SQLite→Postgres después</div></div>
+      </div>
+
+      <h3>Fase 1 auditoría — cerrado en código</h3>
+      <ul>
+        <li>SECRET_KEY obligatoria por entorno (no en código fuente)</li>
+        <li>JWT para listados admin (reviews/services con flags sensibles)</li>
+        <li>Rate limit en login (memoria, suficiente sin workers)</li>
+        <li>Schemas booking/review endurecidos</li>
+        <li>Upload galería: tamaño, Pillow, doble extensión</li>
+        <li>Soft-delete + <code>estado=cancelada</code></li>
+        <li>Health sin filtrar errores BD en producción</li>
+        <li>Legacy eliminado + <code>tests/test_no_legacy.py</code></li>
+      </ul>
+
+      <h3>Fuera de alcance (otro proyecto / más adelante)</h3>
+      <ul>
+        <li>Redis, workers de ingesta, analizadores de alarmas — <strong>no aplican</strong></li>
+        <li>PostgreSQL — sí, cuando pases a producción seria</li>
+        <li>Rate limit distribuido — solo si algún día hay varios workers o réplicas</li>
+      </ul>
+
+      <h3><code>.env</code> vs <code>.env.example</code></h3>
+      <table>
+        <thead><tr><th>Fichero</th><th>¿En Git?</th><th>Uso</th></tr></thead>
+        <tbody>
+          <tr><td><code>.env</code></td><td><strong>No</strong> (en .gitignore)</td><td>Secretos reales locales — <code>SECRET_KEY</code>, SMTP, etc.</td></tr>
+          <tr><td><code>.env.example</code></td><td><strong>No</strong></td><td>Plantilla opcional local; no se sube al repo</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Por qué parecía subirse con .gitignore:</strong> Git sigue trackeando ficheros ya commiteados hasta <code>git rm --cached .env.example</code>. Después, .gitignore aplica. Variables en <code>README.md</code>.</p>
+    </section>
+
+    <!-- 12. ENDPOINTS -->
+    <section id="endpoints">
+      <h2>12. Mapa de endpoints API (activos)</h2>
+      <table>
+        <thead><tr><th>Método</th><th>Ruta</th><th>Auth</th><th>Router</th><th>Notas auditoría</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td>/api/health/</td><td>Público</td><td>health.py</td><td>Puede filtrar db_error</td></tr>
+          <tr><td>POST</td><td>/api/auth/login</td><td>Público</td><td>auth.py</td><td>Sin rate limit; form OAuth2</td></tr>
+          <tr><td>GET</td><td>/api/admin/stats</td><td>Admin JWT</td><td>admin.py</td><td>Poca cobertura tests</td></tr>
+          <tr><td>GET</td><td>/api/services/</td><td>Público</td><td>services.py</td><td>solo_activos=false filtra sin JWT</td></tr>
+          <tr><td>GET</td><td>/api/services/{id}</td><td>Público</td><td>services.py</td><td>—</td></tr>
+          <tr><td>POST/PATCH/DELETE</td><td>/api/services/</td><td>Admin</td><td>services.py</td><td>—</td></tr>
+          <tr><td>GET</td><td>/api/bookings/disponibilidad</td><td>Público + RL</td><td>bookings.py</td><td>—</td></tr>
+          <tr><td>POST</td><td>/api/bookings/</td><td>Público + RL</td><td>bookings.py</td><td>—</td></tr>
+          <tr><td>GET/PATCH/DELETE</td><td>/api/bookings/...</td><td>Admin</td><td>bookings.py</td><td>Soft-delete B-22</td></tr>
+          <tr><td>GET</td><td>/api/bookings/export</td><td>Admin</td><td>bookings.py</td><td>CSV en router</td></tr>
+          <tr><td>GET</td><td>/api/reviews/</td><td>Público</td><td>reviews.py</td><td>⚠ solo_visibles=false sin JWT</td></tr>
+          <tr><td>POST</td><td>/api/reviews/</td><td>Público + RL</td><td>reviews.py</td><td>—</td></tr>
+          <tr><td>PATCH/DELETE</td><td>/api/reviews/{id}</td><td>Admin</td><td>reviews.py</td><td>—</td></tr>
+          <tr><td>GET</td><td>/api/gallery/</td><td>Público</td><td>gallery.py</td><td>—</td></tr>
+          <tr><td>POST</td><td>/api/gallery/upload</td><td>Admin</td><td>gallery.py</td><td>⚠ sin límite tamaño</td></tr>
+          <tr><td>DELETE</td><td>/api/gallery/{id}</td><td>Admin</td><td>gallery.py</td><td>—</td></tr>
+          <tr><td>POST</td><td>/api/contact/</td><td>Público + RL</td><td>contact.py</td><td>201 Created</td></tr>
+          <tr><td>GET/PATCH</td><td>/api/contact/</td><td>Admin</td><td>contact.py</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);color:var(--muted);font-size:0.85rem;">
+      <p>Bulls Barber Shop Backend — Informe de auditoría técnica</p>
+      <p>Generado para el equipo de desarrollo. Incluye análisis verificado de legacy (grep) y mapa endpoint → use case → repositorio.</p>
+      <p>Abrir en navegador: <code>docs/auditoria-backend.html</code></p>
+      <p>Ruta absoluta ejemplo: <code>E:\BULLS_BARBER_SHOP\bulls_barber_shop\backend\docs\auditoria-backend.html</code></p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
