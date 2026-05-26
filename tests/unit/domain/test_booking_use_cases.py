@@ -143,6 +143,17 @@ def test_update_booking_actualiza_notas_y_barbero(mocker):
 
 
 @pytest.mark.unit
+def test_update_booking_estado_cancelada_lanza_value_error(mocker):
+    repo = mocker.Mock()
+    repo.get_by_id.return_value = _booking(id_=1, estado="pendiente")
+
+    uc = UpdateBookingUseCase(repo)
+    with pytest.raises(ValueError, match="DELETE"):
+        uc.execute(1, estado="cancelada")
+    repo.update.assert_not_called()
+
+
+@pytest.mark.unit
 def test_update_booking_no_encontrado_lanza_booking_not_found(mocker):
     repo = mocker.Mock()
     repo.get_by_id.return_value = None

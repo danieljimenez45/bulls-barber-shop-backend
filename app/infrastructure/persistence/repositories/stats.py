@@ -55,6 +55,7 @@ class SQLAlchemyStatsRepository(IStatsRepository):
         return (
             self._session.query(func.count(BookingORM.id))
             .filter(
+                BookingORM.deleted_at.is_(None),
                 BookingORM.fecha_hora >= inicio,
                 BookingORM.fecha_hora <= fin,
                 BookingORM.estado != "cancelada",
@@ -72,6 +73,7 @@ class SQLAlchemyStatsRepository(IStatsRepository):
             .select_from(BookingORM)
             .join(ServiceORM, BookingORM.servicio_id == ServiceORM.id, isouter=True)
             .filter(
+                BookingORM.deleted_at.is_(None),
                 BookingORM.estado.in_(["confirmada", "completada"]),
                 BookingORM.fecha_hora >= inicio,
                 BookingORM.fecha_hora <= fin,
@@ -87,7 +89,10 @@ class SQLAlchemyStatsRepository(IStatsRepository):
                 BookingORM.servicio_nombre,
                 func.count(BookingORM.id).label("total"),
             )
-            .filter(BookingORM.estado != "cancelada")
+            .filter(
+                BookingORM.deleted_at.is_(None),
+                BookingORM.estado != "cancelada",
+            )
             .group_by(BookingORM.servicio_id, BookingORM.servicio_nombre)
             .order_by(desc("total"))
             .limit(limit)

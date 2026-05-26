@@ -1,43 +1,31 @@
 """
 Casos de uso del dominio de mensajes de contacto.
 
-B-24: se añaden casos de uso para persistencia, listado y marcado como leído.
+B-24: persistencia, listado y marcado como leído.
 """
 
-import logging
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from app.domain.contact.entity import ContactMessage
 from app.domain.contact.ports import IContactNotifier, IContactRepository
 
-logger = logging.getLogger(__name__)
-
 
 class SendContactMessageUseCase:
     """
-    Recibe un mensaje de contacto, lo persiste en BD (si hay repo disponible)
-    y lo notifica al barbero (email u otro canal).
+    Recibe un mensaje de contacto, lo persiste en BD y lo notifica al barbero.
     """
 
     def __init__(
         self,
-        notifier:   IContactNotifier,
-        repository: Optional[IContactRepository] = None,
+        notifier: IContactNotifier,
+        repository: IContactRepository,
     ) -> None:
-        self._notifier   = notifier
+        self._notifier = notifier
         self._repository = repository
 
     def execute(self, message: ContactMessage) -> ContactMessage:
-        # 1. Persistir primero para obtener id y created_at
-        if self._repository:
-            message = self._repository.save(message)
-
-        # 2. Notificar (el fallo en el notificador no deshace la persistencia)
-        try:
-            self._notifier.notify(message)
-        except Exception:
-            logger.exception("Error al notificar el mensaje de contacto id=%s", message.id)
-
+        message = self._repository.save(message)
+        self._notifier.notify(message)
         return message
 
 

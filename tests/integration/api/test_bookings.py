@@ -1,8 +1,12 @@
 """Tests de integración de la API de reservas."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from tests.helpers import FUTURE_SLOT, FUTURE_SLOT_2, booking_payload
+
+pytestmark = pytest.mark.usefixtures("seed_booking_service")
 
 
 # ── Endpoints públicos ─────────────────────────────────────────────────────────
@@ -32,6 +36,64 @@ def test_crear_reserva_slot_ocupado_409(client, mocker):
     # Intentar el mismo slot → 409
     response = client.post("/api/bookings/", json=booking_payload())
     assert response.status_code == 409
+
+
+@pytest.mark.integration
+def test_crear_reserva_fecha_pasada_422(client):
+    pasado = (datetime.now(timezone.utc) - timedelta(days=1)).replace(
+        microsecond=0
+    ).isoformat().replace("+00:00", "")
+    response = client.post(
+        "/api/bookings/",
+        json=booking_payload(fecha_hora=pasado),
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_crear_reserva_servicio_inactivo_400(client, auth_headers, mocker):
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    created = client.post(
+        "/api/services/",
+        headers=auth_headers,
+        json={
+            "nombre": "Inactivo",
+            "descripcion": "x",
+            "precio": 10.0,
+            "duracion_minutos": 30,
+            "categoria": "corte",
+            "activo": False,
+            "orden": 0,
+        },
+    ).json()
+    response = client.post(
+        "/api/bookings/",
+        json=booking_payload(servicio_id=created["id"]),
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.integration
+def test_crear_reserva_servicio_nombre_desde_bd(client, mocker):
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    response = client.post(
+        "/api/bookings/",
+        json=booking_payload(servicio_nombre="Nombre Falso En Payload"),
+    )
+    assert response.status_code == 201
+    assert response.json()["servicio_nombre"] == "Corte Clásico"
+
+
+@pytest.mark.integration
+def test_patch_cancelada_rechazado_400(client, auth_headers, mocker):
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    created = client.post("/api/bookings/", json=booking_payload()).json()
+    response = client.patch(
+        f"/api/bookings/{created['id']}",
+        headers=auth_headers,
+        json={"estado": "cancelada"},
+    )
+    assert response.status_code == 400
 
 
 @pytest.mark.integration

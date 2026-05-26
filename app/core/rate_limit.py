@@ -31,10 +31,11 @@ _store: Dict[Tuple[str, str], Deque[float]] = defaultdict(deque)
 
 
 def _get_client_ip(request: Request) -> str:
-    """Extrae la IP real teniendo en cuenta proxies inversos."""
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+    """Extrae la IP del cliente; X-Forwarded-For solo si TRUST_PROXY_HEADERS está activo."""
+    if settings.TRUST_PROXY_HEADERS:
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 

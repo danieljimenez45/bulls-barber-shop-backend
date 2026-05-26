@@ -1,7 +1,10 @@
+import logging
 from typing import List, Optional, Tuple
 
 from app.domain.gallery.entity import GalleryImage
 from app.domain.gallery.ports import IGalleryRepository, IFileStorage, ImageNotFound
+
+logger = logging.getLogger(__name__)
 
 
 class ListImagesUseCase:
@@ -45,5 +48,16 @@ class DeleteImageUseCase:
         image = self._repo.get_by_id(image_id)
         if not image:
             raise ImageNotFound(f"Imagen {image_id} no encontrada")
-        self._storage.delete(image.imagen_url)
+
+        url = image.imagen_url
         self._repo.delete(image_id)
+
+        try:
+            self._storage.delete(url)
+        except OSError as exc:
+            logger.warning(
+                "Registro %s eliminado en BD pero no se pudo borrar el fichero %s: %s",
+                image_id,
+                url,
+                exc,
+            )

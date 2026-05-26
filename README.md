@@ -80,6 +80,20 @@ Las variables de entorno de test se inyectan automáticamente desde `pytest.ini`
 
 ---
 
+## Reglas de negocio — reservas
+
+- **Fecha futura:** `fecha_hora` debe ser estrictamente posterior a la hora actual en **UTC**. Las fechas sin zona horaria se interpretan como UTC.
+- **Slot ocupado:** solo las reservas en estado `pendiente` o `confirmada` (y no eliminadas con soft-delete) bloquean un horario. `cancelada` y `completada` no impiden una nueva reserva en el mismo instante.
+- **Cancelar:** usar siempre `DELETE /api/bookings/{id}`. No se admite `PATCH` con `estado=cancelada` (el soft-delete y `deleted_at` solo aplican vía DELETE).
+- **Servicio:** al crear una reserva, el nombre del servicio se toma de la base de datos según `servicio_id`; el cliente no puede imponer otro nombre en el payload.
+- **Concurrencia:** comprobación previa del slot + índice único parcial en BD; colisión → HTTP 409.
+
+### Rate limiting detrás de proxy
+
+Por defecto `TRUST_PROXY_HEADERS=false`: la IP del rate limit es la conexión directa (`request.client.host`). Activa `TRUST_PROXY_HEADERS=true` en `.env` **solo** si la API está detrás de un reverse proxy (nginx, Traefik, etc.) que sobrescribe `X-Forwarded-For` de forma fiable.
+
+---
+
 ## Endpoints principales
 
 ### Públicos

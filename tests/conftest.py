@@ -86,6 +86,26 @@ def client(_test_client, db_session, monkeypatch):
 
 
 @pytest.fixture()
+def seed_booking_service(db_session):
+    """Servicio activo id=1 para tests de reservas (validación en router)."""
+    from app.infrastructure.persistence.orm.service import ServiceORM
+
+    if db_session.query(ServiceORM).filter_by(id=1).first() is not None:
+        return
+    svc = ServiceORM(
+        nombre="Corte Clásico",
+        descripcion="Corte tradicional",
+        precio=15.0,
+        duracion_minutos=30,
+        categoria="corte",
+        activo=True,
+        orden=0,
+    )
+    db_session.add(svc)
+    db_session.commit()
+
+
+@pytest.fixture()
 def admin_user(db_session):
     """Crea un usuario admin en la BD de test y lo devuelve."""
     user_orm = UserORM(

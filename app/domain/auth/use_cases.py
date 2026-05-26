@@ -20,6 +20,7 @@ class LoginUseCase:
 
     def execute(self, email: str, password: str) -> str:
         """Autentica al admin y devuelve un JWT. Lanza InvalidCredentials si falla."""
+        email = email.strip().lower()
         user = self._user_repo.find_by_email(email)
         if not user or not user.is_active:
             raise InvalidCredentials("Credenciales inválidas")
@@ -43,10 +44,11 @@ class GetCurrentAdminUseCase:
         from app.domain.auth.ports import TokenInvalid  # evitar circular import
 
         payload = self._token_service.decode_token(token)  # lanza TokenInvalid si falla
-        user_id = payload.get("sub")
-        if not user_id:
-            raise TokenInvalid("Token sin subject")
-        user = self._user_repo.find_by_id(int(user_id))
+        try:
+            user_id = int(payload.get("sub", ""))
+        except (TypeError, ValueError):
+            raise TokenInvalid("Token inválido") from None
+        user = self._user_repo.find_by_id(user_id)
         if not user or not user.is_active:
             raise TokenInvalid("Usuario no encontrado o inactivo")
         return user

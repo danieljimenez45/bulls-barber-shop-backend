@@ -74,6 +74,10 @@ class UpdateBookingUseCase:
         if not booking:
             raise BookingNotFound(f"Reserva {booking_id} no encontrada")
         if estado is not None:
+            if estado == "cancelada":
+                raise ValueError(
+                    "Para cancelar una reserva usa DELETE /api/bookings/{id}."
+                )
             booking.cambiar_estado(estado)  # valida en la entidad
         if notas is not None:
             booking.notas = notas

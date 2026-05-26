@@ -44,12 +44,23 @@ def test_delete_image_no_encontrada_lanza_error(mocker):
 
 
 @pytest.mark.unit
-def test_delete_image_borra_storage_y_repo(mocker):
+def test_delete_image_repo_primero_luego_storage(mocker):
     repo = mocker.Mock()
     storage = mocker.Mock()
     repo.get_by_id.return_value = GalleryImage(id=3, imagen_url="https://cdn/x.png")
+    order: list[str] = []
+
+    def _repo_delete(image_id: int) -> None:
+        order.append("repo")
+
+    def _storage_delete(url: str) -> None:
+        order.append("storage")
+
+    repo.delete.side_effect = _repo_delete
+    storage.delete.side_effect = _storage_delete
 
     DeleteImageUseCase(repo, storage).execute(3)
 
-    storage.delete.assert_called_once_with("https://cdn/x.png")
+    assert order == ["repo", "storage"]
     repo.delete.assert_called_once_with(3)
+    storage.delete.assert_called_once_with("https://cdn/x.png")

@@ -21,6 +21,21 @@ def _admin(id_: int = 1, is_active: bool = True) -> AdminUser:
 # ── LoginUseCase ───────────────────────────────────────────────────────────────
 
 @pytest.mark.unit
+def test_login_normaliza_email(mocker):
+    repo = mocker.Mock()
+    repo.find_by_email.return_value = _admin()
+
+    hasher = mocker.Mock()
+    hasher.verify.return_value = True
+    token_svc = mocker.Mock()
+    token_svc.create_token.return_value = "jwt"
+
+    LoginUseCase(repo, hasher, token_svc).execute("  Admin@Test.COM  ", "password123")
+
+    repo.find_by_email.assert_called_once_with("admin@test.com")
+
+
+@pytest.mark.unit
 def test_login_correcto_devuelve_token(mocker):
     """Login con credenciales válidas debe devolver un token no vacío."""
     repo = mocker.Mock()
@@ -148,5 +163,18 @@ def test_get_current_admin_token_sin_subject_lanza_token_invalid(mocker):
     uc = GetCurrentAdminUseCase(repo, token_svc)
     with pytest.raises(TokenInvalid):
         uc.execute("token.without.sub")
+
+    repo.find_by_id.assert_not_called()
+
+
+@pytest.mark.unit
+def test_get_current_admin_sub_no_numerico_lanza_token_invalid(mocker):
+    repo = mocker.Mock()
+    token_svc = mocker.Mock()
+    token_svc.decode_token.return_value = {"sub": "not-a-number"}
+
+    uc = GetCurrentAdminUseCase(repo, token_svc)
+    with pytest.raises(TokenInvalid):
+        uc.execute("token.bad.sub")
 
     repo.find_by_id.assert_not_called()

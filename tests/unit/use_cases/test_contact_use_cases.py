@@ -38,29 +38,15 @@ def test_send_contact_guarda_en_repo_si_existe(mocker):
 
 
 @pytest.mark.unit
-def test_send_contact_notifica_aunque_falle_el_repo(mocker):
-    """Si el notifier falla, el use case no re-lanza la excepción."""
+def test_send_contact_notifier_falla_propaga_excepcion(mocker):
     repo = mocker.Mock()
     notifier = mocker.Mock()
     notifier.notify.side_effect = RuntimeError("SMTP caído")
     repo.save.return_value = _msg(id_=2)
 
     uc = SendContactMessageUseCase(notifier=notifier, repository=repo)
-    result = uc.execute(_msg())  # no debe explotar
-
-    assert result.id == 2
-
-
-@pytest.mark.unit
-def test_send_contact_sin_repo_solo_notifica(mocker):
-    notifier = mocker.Mock()
-
-    uc = SendContactMessageUseCase(notifier=notifier, repository=None)
-    msg = _msg()
-    result = uc.execute(msg)
-
-    notifier.notify.assert_called_once_with(msg)
-    assert result.id is None  # sin repo no hay id
+    with pytest.raises(RuntimeError, match="SMTP"):
+        uc.execute(_msg())
 
 
 # ── ListContactMessagesUseCase ─────────────────────────────────────────────────

@@ -46,6 +46,8 @@ class Settings(BaseSettings):
 
     # Rate limiting — se puede deshabilitar en dev poniendo RATE_LIMIT_ENABLED=false
     RATE_LIMIT_ENABLED: bool = True
+    # Solo True detrás de nginx/Traefik que sobrescribe X-Forwarded-For de forma fiable
+    TRUST_PROXY_HEADERS: bool = False
 
     # Email (para notificaciones de reservas — opcional)
     SMTP_HOST: str = ""
@@ -55,7 +57,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = ""
     ADMIN_EMAIL: str = ""
 
-    # Cloudinary — almacenamiento de imágenes en la nube (B-26)
+    # Cloudinary — almacenamiento de imágenes en la nube
     # Si los tres valores están configurados se usa Cloudinary.
     # Si alguno está vacío, se usa el almacenamiento local (dev).
     CLOUDINARY_CLOUD_NAME: str = ""

@@ -1,6 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+
+from app.core.constants import DEFAULT_BARBER
 
 
 @dataclass
@@ -12,7 +14,7 @@ class Booking:
     id: Optional[int] = None
     email: Optional[str] = None
     servicio_nombre: Optional[str] = None
-    barbero: str = "Cualquier barbero"
+    barbero: str = DEFAULT_BARBER
     notas: Optional[str] = None
     estado: str = "pendiente"
     created_at: Optional[datetime] = None

@@ -7,6 +7,8 @@ import pytest
 
 from tests.helpers import booking_payload
 
+pytestmark = pytest.mark.usefixtures("seed_booking_service")
+
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 @pytest.fixture(autouse=True)
@@ -138,7 +140,7 @@ def test_export_columnas_tienen_datos_correctos(client, auth_headers):
     row = rows[0]
     assert row["nombre_cliente"] == "María Ruiz"
     assert row["telefono"] == "611222333"
-    assert row["servicio"] == "Corte clásico"
+    assert row["servicio"] == "Corte Clásico"
     assert row["estado"] == "pendiente"
     assert "2027-06-10" in row["fecha_hora"]
     assert row["id"].isdigit()

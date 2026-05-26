@@ -12,6 +12,8 @@ from app.infrastructure.persistence.orm.booking import BookingORM
 from app.infrastructure.persistence.repositories.booking import SQLAlchemyBookingRepository
 from tests.helpers import domain_booking
 
+pytestmark = pytest.mark.usefixtures("seed_booking_service")
+
 
 @pytest.mark.integration
 def test_create_devuelve_entidad_con_id(db_session):
@@ -155,6 +157,34 @@ def test_is_slot_available_ocupado(db_session):
     repo = SQLAlchemyBookingRepository(db_session)
     repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
     assert repo.is_slot_available(datetime(2025, 8, 15, 10, 0)) is False
+
+
+@pytest.mark.integration
+def test_is_slot_available_completada_cuenta_como_libre(db_session):
+    repo = SQLAlchemyBookingRepository(db_session)
+    b = repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0)))
+    b.estado = "completada"
+    repo.update(b)
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 0)) is True
+
+
+@pytest.mark.integration
+def test_create_integrity_error_lanza_slot_ocupado(db_session, mocker):
+    from sqlalchemy.exc import IntegrityError
+
+    repo = SQLAlchemyBookingRepository(db_session)
+    mocker.patch.object(repo, "is_slot_available", return_value=True)
+    mocker.patch.object(
+        db_session,
+        "commit",
+        side_effect=IntegrityError("stmt", {}, Exception("unique")),
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        repo.create(domain_booking())
+    from app.domain.booking.ports import SlotOcupado
+
+    assert isinstance(exc_info.value, SlotOcupado)
 
 
 @pytest.mark.integration

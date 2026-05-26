@@ -3,7 +3,10 @@
 from datetime import date, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.core.constants import DEFAULT_BARBER
+from app.domain.booking.rules import FechaEnPasado, assert_future_datetime
 
 
 class BookingCreate(BaseModel):
@@ -26,8 +29,17 @@ class BookingCreate(BaseModel):
     servicio_id: int = Field(..., gt=0, description="ID del servicio seleccionado.")
     servicio_nombre: Optional[str] = Field(None, max_length=100)
     fecha_hora: datetime = Field(..., description="Fecha y hora del turno (ISO 8601).")
-    barbero: Optional[str] = Field("Cualquier barbero", max_length=100)
+    barbero: Optional[str] = Field(DEFAULT_BARBER, max_length=100)
     notas: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("fecha_hora")
+    @classmethod
+    def fecha_debe_ser_futura(cls, v: datetime) -> datetime:
+        try:
+            assert_future_datetime(v)
+        except FechaEnPasado as exc:
+            raise ValueError(str(exc)) from exc
+        return v
 
 
 class BookingUpdate(BaseModel):

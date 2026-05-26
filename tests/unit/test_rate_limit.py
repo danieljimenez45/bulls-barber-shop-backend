@@ -25,9 +25,20 @@ class TestGetClientIp:
         req = _make_request(ip="10.0.0.1")
         assert _get_client_ip(req) == "10.0.0.1"
 
-    def test_usa_x_forwarded_for(self):
+    def test_no_trusts_forwarded_for_by_default(self):
+        import app.config as cfg
+
+        cfg.settings.TRUST_PROXY_HEADERS = False
+        req = _make_request(ip="10.0.0.1", forwarded_for="203.0.113.1, 10.0.0.1")
+        assert _get_client_ip(req) == "10.0.0.1"
+
+    def test_usa_x_forwarded_for_con_trust_proxy(self):
+        import app.config as cfg
+
+        cfg.settings.TRUST_PROXY_HEADERS = True
         req = _make_request(forwarded_for="203.0.113.1, 10.0.0.1")
         assert _get_client_ip(req) == "203.0.113.1"
+        cfg.settings.TRUST_PROXY_HEADERS = False
 
     def test_sin_client(self):
         req = MagicMock()

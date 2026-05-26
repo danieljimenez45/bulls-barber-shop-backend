@@ -39,13 +39,38 @@ class UpdateServiceUseCase:
     def __init__(self, repo: IServiceRepository) -> None:
         self._repo = repo
 
-    def execute(self, service_id: int, **fields) -> Service:
+    def execute(
+        self,
+        service_id: int,
+        *,
+        nombre: str | None = None,
+        descripcion: str | None = None,
+        precio: float | None = None,
+        duracion_minutos: int | None = None,
+        categoria: str | None = None,
+        imagen_url: str | None = None,
+        activo: bool | None = None,
+        orden: int | None = None,
+    ) -> Service:
         service = self._repo.get_by_id(service_id)
         if not service:
             raise ServiceNotFound(f"Servicio {service_id} no encontrado")
-        for key, value in fields.items():
-            if value is not None and hasattr(service, key):
-                setattr(service, key, value)
+        if nombre is not None:
+            service.nombre = nombre
+        if descripcion is not None:
+            service.descripcion = descripcion
+        if precio is not None:
+            service.precio = precio
+        if duracion_minutos is not None:
+            service.duracion_minutos = duracion_minutos
+        if categoria is not None:
+            service.categoria = categoria
+        if imagen_url is not None:
+            service.imagen_url = imagen_url
+        if activo is not None:
+            service.activo = activo
+        if orden is not None:
+            service.orden = orden
         return self._repo.update(service)
 
 

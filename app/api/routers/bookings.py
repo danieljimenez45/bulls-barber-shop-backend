@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_admin
 from app.api.dependencies.pagination import PaginationParams
+from app.core.constants import DEFAULT_BARBER
 from app.core.rate_limit import limiter
 from app.api.schemas.booking import (
     BookingCreate,
@@ -33,6 +34,9 @@ from app.domain.booking.use_cases import (
 from app.infrastructure.notifications.booking_notifier import SMTPBookingNotifier
 from app.infrastructure.persistence.repositories.booking import (
     SQLAlchemyBookingRepository,
+)
+from app.infrastructure.persistence.repositories.service import (
+    SQLAlchemyServiceRepository,
 )
 
 router = APIRouter()
@@ -68,14 +72,22 @@ def crear_reserva(
     Crea una reserva (acceso público — el cliente la solicita desde la web).
     Devuelve 409 si ya existe una cita activa en esa fecha+hora.
     """
+    service_repo = SQLAlchemyServiceRepository(db)
+    service = service_repo.get_by_id(data.servicio_id)
+    if not service or not service.activo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El servicio {data.servicio_id} no existe o no está disponible.",
+        )
+
     booking = Booking(
         nombre_cliente=data.nombre_cliente,
         telefono=data.telefono,
         email=data.email,
-        servicio_id=data.servicio_id,
-        servicio_nombre=data.servicio_nombre,
+        servicio_id=service.id,
+        servicio_nombre=service.nombre,
         fecha_hora=data.fecha_hora,
-        barbero=data.barbero or "Cualquier barbero",
+        barbero=data.barbero or DEFAULT_BARBER,
         notas=data.notas,
     )
     repo = SQLAlchemyBookingRepository(db)
@@ -131,28 +143,7 @@ def exportar_reservas_csv(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    # Construir el CSV en memoria
-    output = io.StringIO()
-    writer = csv.writer(output, lineterminator="\n")
-    writer.writerow(["id", "nombre_cliente", "telefono", "servicio", "fecha_hora", "estado", "creada_en"])
-    for b in bookings:
-        writer.writerow([
-            b.id,
-            b.nombre_cliente,
-            b.telefono,
-            b.servicio_nombre or "",
-            b.fecha_hora.strftime("%Y-%m-%d %H:%M"),
-            b.estado,
-            b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "",
-        ])
-
-    output.seek(0)
-    filename = f"reservas_{desde}_{hasta}.csv"
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    return _build_csv_response(bookings, desde, hasta)
 
 
 @router.get("/{booking_id}", response_model=BookingOut)
@@ -200,3 +191,34 @@ def cancelar_reserva(
         uc.execute(booking_id)
     except BookingNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+def _build_csv_response(
+    bookings: list[Booking],
+    desde: date,
+    hasta: date,
+) -> StreamingResponse:
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(
+        ["id", "nombre_cliente", "telefono", "servicio", "fecha_hora", "estado", "creada_en"]
+    )
+    for b in bookings:
+        writer.writerow(
+            [
+                b.id,
+                b.nombre_cliente,
+                b.telefono,
+                b.servicio_nombre or "",
+                b.fecha_hora.strftime("%Y-%m-%d %H:%M"),
+                b.estado,
+                b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else "",
+            ]
+        )
+    buf.seek(0)
+    filename = f"reservas_{desde}_{hasta}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

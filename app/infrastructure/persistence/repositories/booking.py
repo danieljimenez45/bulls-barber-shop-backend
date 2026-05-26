@@ -13,10 +13,12 @@ from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.domain.booking.entity import Booking
-from app.domain.booking.ports import BookingNotFound, IBookingRepository
+from app.domain.booking.ports import BookingNotFound, IBookingRepository, SlotOcupado
+from app.domain.booking.rules import BOOKING_ACTIVE_STATES
 from app.infrastructure.persistence.orm.booking import BookingORM
 
 
@@ -53,6 +55,11 @@ class SQLAlchemyBookingRepository(IBookingRepository):
     # ── Puerto ────────────────────────────────────────────────────────────────
 
     def create(self, booking: Booking) -> Booking:
+        if not self.is_slot_available(booking.fecha_hora):
+            raise SlotOcupado(
+                f"El horario {booking.fecha_hora.strftime('%d/%m/%Y a las %H:%M')} "
+                "ya está reservado. Por favor elige otro horario."
+            )
         orm = BookingORM(
             nombre_cliente=booking.nombre_cliente,
             telefono=booking.telefono,
@@ -64,7 +71,13 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             notas=booking.notas,
         )
         self._session.add(orm)
-        self._session.commit()
+        try:
+            self._session.commit()
+        except IntegrityError as exc:
+            self._session.rollback()
+            raise SlotOcupado(
+                "El horario seleccionado ya no está disponible. Por favor elige otro."
+            ) from exc
         self._session.refresh(orm)
         return self._to_entity(orm)
 
@@ -133,12 +146,12 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         self._session.commit()
 
     def is_slot_available(self, fecha_hora: datetime) -> bool:
-        """True si no hay ninguna cita activa (no cancelada, no eliminada) en ese instante."""
+        """True si no hay cita pendiente/confirmada activa en ese instante."""
         count = (
             self._active(self._session.query(func.count(BookingORM.id)))
             .filter(
                 BookingORM.fecha_hora == fecha_hora,
-                BookingORM.estado != "cancelada",
+                BookingORM.estado.in_(tuple(BOOKING_ACTIVE_STATES)),
             )
             .scalar()
             or 0
@@ -146,15 +159,15 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         return count == 0
 
     def get_slots_ocupados(self, fecha: date) -> list[datetime]:
-        """Devuelve las horas ocupadas (no canceladas, no eliminadas) en la fecha dada."""
+        """Devuelve horas con reserva pendiente o confirmada en la fecha dada."""
         inicio = datetime.combine(fecha, datetime.min.time())
-        fin    = datetime.combine(fecha, datetime.max.time())
+        fin = datetime.combine(fecha, datetime.max.time())
         rows = (
             self._active(self._session.query(BookingORM.fecha_hora))
             .filter(
                 BookingORM.fecha_hora >= inicio,
                 BookingORM.fecha_hora <= fin,
-                BookingORM.estado != "cancelada",
+                BookingORM.estado.in_(tuple(BOOKING_ACTIVE_STATES)),
             )
             .all()
         )
