@@ -74,18 +74,19 @@ def test_crear_reserva_servicio_inactivo_400(client, auth_headers, mocker):
 
 
 @pytest.mark.integration
-def test_crear_reserva_servicio_nombre_desde_bd(client, mocker):
+def test_crear_reserva_servicio_nombre_proviene_de_bd(client, mocker):
+    """El servicio_nombre en la respuesta siempre viene de BD, no del payload."""
     mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
-    response = client.post(
-        "/api/bookings/",
-        json=booking_payload(servicio_nombre="Nombre Falso En Payload"),
-    )
+    response = client.post("/api/bookings/", json=booking_payload())
     assert response.status_code == 201
     assert response.json()["servicio_nombre"] == "Corte Clásico"
 
 
 @pytest.mark.integration
-def test_patch_cancelada_rechazado_400(client, auth_headers, mocker):
+def test_patch_cancelada_rechazado_422(client, auth_headers, mocker):
+    """PATCH con estado=cancelada devuelve 422: Pydantic rechaza el valor en
+    el schema (cancelada no está en el Literal de BookingUpdate.estado).
+    La cancelación solo se permite a través de DELETE /api/bookings/{id}."""
     mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
     created = client.post("/api/bookings/", json=booking_payload()).json()
     response = client.patch(
@@ -93,7 +94,7 @@ def test_patch_cancelada_rechazado_400(client, auth_headers, mocker):
         headers=auth_headers,
         json={"estado": "cancelada"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 @pytest.mark.integration

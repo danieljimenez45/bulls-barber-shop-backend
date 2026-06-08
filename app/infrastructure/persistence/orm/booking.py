@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -11,7 +11,10 @@ class BookingORM(Base):
     nombre_cliente  = Column(String(100),  nullable=False)
     telefono        = Column(String(20),   nullable=False)
     email           = Column(String(100),  nullable=True)
-    servicio_id     = Column(Integer,      nullable=False)
+    # FK → services.id con ON DELETE RESTRICT: no permite borrar un servicio
+    # que tenga reservas vinculadas.  El PRAGMA foreign_keys=ON (database.py)
+    # activa la comprobación en SQLite; PostgreSQL la aplica de forma nativa.
+    servicio_id     = Column(Integer, ForeignKey("services.id", ondelete="RESTRICT"), nullable=False)
     servicio_nombre = Column(String(100),  nullable=True)
     fecha_hora      = Column(DateTime,     nullable=False)
     barbero         = Column(String(100),  nullable=True, default="Cualquier barbero")

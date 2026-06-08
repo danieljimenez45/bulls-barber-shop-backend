@@ -16,7 +16,6 @@ def booking_payload(**kwargs) -> dict:
         "nombre_cliente": "Pedro Martínez",
         "telefono": "611222333",
         "servicio_id": 1,
-        "servicio_nombre": "Corte Clásico",
         "fecha_hora": FUTURE_SLOT,
     }
     defaults.update(kwargs)

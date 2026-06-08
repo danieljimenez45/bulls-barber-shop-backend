@@ -1,9 +1,10 @@
 from typing import List, Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.domain.service.entity import Service
-from app.domain.service.ports import IServiceRepository, ServiceNotFound
+from app.domain.service.ports import IServiceRepository, ServiceHasBookings, ServiceNotFound
 from app.infrastructure.persistence.orm.service import ServiceORM
 
 
@@ -93,5 +94,12 @@ class SQLAlchemyServiceRepository(IServiceRepository):
         )
         if not orm:
             raise ServiceNotFound(f"Servicio {service_id} no encontrado")
-        self._session.delete(orm)
-        self._session.commit()
+        try:
+            self._session.delete(orm)
+            self._session.commit()
+        except IntegrityError:
+            self._session.rollback()
+            raise ServiceHasBookings(
+                "Hay reservas vinculadas a este servicio. "
+                "Desactívalo (activo=false) en lugar de eliminarlo."
+            )

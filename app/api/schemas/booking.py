@@ -27,7 +27,8 @@ class BookingCreate(BaseModel):
         description="Correo electrónico opcional para confirmaciones.",
     )
     servicio_id: int = Field(..., gt=0, description="ID del servicio seleccionado.")
-    servicio_nombre: Optional[str] = Field(None, max_length=100)
+    # servicio_nombre se omite intencionadamente: el backend lo obtiene de BD
+    # a partir de servicio_id y lo ignora si el cliente lo enviara.
     fecha_hora: datetime = Field(..., description="Fecha y hora del turno (ISO 8601).")
     barbero: Optional[str] = Field(DEFAULT_BARBER, max_length=100)
     notas: Optional[str] = Field(None, max_length=500)
@@ -43,8 +44,12 @@ class BookingCreate(BaseModel):
 
 
 class BookingUpdate(BaseModel):
-    # Solo se aceptan transiciones de estado conocidas para evitar valores arbitrarios en BD.
-    estado: Optional[Literal["pendiente", "confirmada", "cancelada", "completada"]] = None
+    # Solo se aceptan transiciones de estado vía PATCH.
+    # "cancelada" se excluye deliberadamente: la cancelación debe hacerse
+    # siempre a través de DELETE /api/bookings/{id}, que ejecuta el soft-delete
+    # consistente (deleted_at + estado=cancelada). Un PATCH con cancelada
+    # dejaría la fila sin deleted_at y rompería las reglas de slot ocupado.
+    estado: Optional[Literal["pendiente", "confirmada", "completada"]] = None
     notas: Optional[str] = Field(None, max_length=500)
     barbero: Optional[str] = Field(None, max_length=100)
 

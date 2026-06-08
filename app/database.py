@@ -1,7 +1,22 @@
-from sqlalchemy import create_engine
+import sqlite3
+
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import settings
+
+# ── SQLite: activar comprobación de FK en cada conexión ───────────────────────
+# SQLite deshabilita las FK por defecto por compatibilidad con versiones antiguas.
+# El listener se registra a nivel de clase (Engine), por lo que afecta a TODOS
+# los engines del proceso, incluido el engine de test creado en conftest.py.
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, _connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 
 # Para SQLite necesitamos check_same_thread=False
 connect_args = (

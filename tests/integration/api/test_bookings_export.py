@@ -134,7 +134,7 @@ def test_export_reservas_ordenadas_por_fecha_ascendente(client, auth_headers):
 @pytest.mark.integration
 def test_export_columnas_tienen_datos_correctos(client, auth_headers):
     _make_booking(client, "2027-06-10T14:00:00", nombre="María Ruiz",
-                  servicio_nombre="Corte clásico", telefono="611222333")
+                  telefono="611222333")
     resp = _export(client, auth_headers, "2027-06-01", "2027-06-30")
     rows = _parse_csv(resp.text)
     row = rows[0]

@@ -8,7 +8,7 @@ from app.api.schemas.service import ServiceCreate, ServiceOut, ServiceUpdate
 from app.database import get_db
 from app.domain.auth.entity import AdminUser
 from app.domain.service.entity import Service
-from app.domain.service.ports import ServiceNotFound
+from app.domain.service.ports import ServiceHasBookings, ServiceNotFound
 from app.domain.service.use_cases import (
     CreateServiceUseCase,
     DeleteServiceUseCase,
@@ -111,9 +111,17 @@ def eliminar_servicio(
     db: Session = Depends(get_db),
     _admin: AdminUser = Depends(get_current_admin),
 ):
+    """Elimina un servicio.
+
+    Devuelve 409 si existen reservas vinculadas al servicio.  En ese caso la
+    alternativa recomendada es desactivarlo (PUT activo=false) para ocultarlo
+    del formulario público sin perder el historial de reservas.
+    """
     repo = SQLAlchemyServiceRepository(db)
     uc = DeleteServiceUseCase(repo)
     try:
         uc.execute(service_id)
     except ServiceNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except ServiceHasBookings as exc:
+        raise HTTPException(status_code=409, detail=str(exc))

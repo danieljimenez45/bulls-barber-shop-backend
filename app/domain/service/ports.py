@@ -8,6 +8,15 @@ class ServiceNotFound(Exception):
     """Se lanza cuando no se encuentra un servicio por su ID."""
 
 
+class ServiceHasBookings(Exception):
+    """Se lanza al intentar eliminar un servicio que tiene reservas activas.
+
+    Solución recomendada: desactivar el servicio (activo=false) en lugar de
+    eliminarlo.  El servicio puede borrarse físicamente una vez que no queden
+    reservas pendientes o confirmadas que lo referencien.
+    """
+
+
 class IServiceRepository(ABC):
 
     @abstractmethod

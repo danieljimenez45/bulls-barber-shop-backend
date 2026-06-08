@@ -70,6 +70,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=True,          # detecta cambios de tipo de columna
         compare_server_default=True,
+        render_as_batch=True,       # SQLite batch-recreates tables for ALTER ops
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -80,6 +81,10 @@ def run_migrations_online() -> None:
     """
     Ejecuta las migraciones con una conexión activa a la BD.
     Es el modo habitual cuando se lanza desde la app o desde la CLI.
+
+    render_as_batch=True: necesario para SQLite, que no soporta ALTER TABLE
+    nativo.  Alembic recrea la tabla en lote (batch) en su lugar.  Para
+    PostgreSQL esta opción es inofensiva ya que usa ALTER TABLE directamente.
     """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -93,6 +98,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
+            render_as_batch=True,   # SQLite batch-recreates tables for ALTER ops
         )
         with context.begin_transaction():
             context.run_migrations()

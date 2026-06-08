@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.helpers import service_payload
+from tests.helpers import booking_payload, service_payload
 
 
 @pytest.mark.integration
@@ -179,3 +179,58 @@ def test_eliminar_servicio_id_inexistente_404(client, auth_headers):
     """DELETE con un ID inexistente debe devolver 404."""
     resp = client.delete("/api/services/9999", headers=auth_headers)
     assert resp.status_code == 404
+
+
+# ── Integridad FK: bookings → services ────────────────────────────────────────
+
+@pytest.mark.integration
+def test_eliminar_servicio_con_reservas_409(client, auth_headers, mocker):
+    """DELETE de un servicio con reservas activas devuelve 409.
+
+    La FK ON DELETE RESTRICT en bookings.servicio_id impide el borrado físico.
+    El router captura ServiceHasBookings y responde con 409 Conflict.
+    """
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    # Crear el servicio
+    svc = client.post("/api/services/", headers=auth_headers, json=service_payload()).json()
+    svc_id = svc["id"]
+    # Crear una reserva que lo referencia
+    r = client.post("/api/bookings/", json=booking_payload(servicio_id=svc_id))
+    assert r.status_code == 201, f"No se pudo crear la reserva: {r.text}"
+    # Intentar eliminar el servicio con reservas vinculadas → 409
+    resp = client.delete(f"/api/services/{svc_id}", headers=auth_headers)
+    assert resp.status_code == 409
+    assert "reservas" in resp.json()["detail"].lower()
+
+
+@pytest.mark.integration
+def test_desactivar_servicio_con_reservas_200(client, auth_headers, mocker):
+    """PUT activo=false sobre un servicio con reservas debe devolver 200.
+
+    Desactivar es la alternativa recomendada cuando no se puede eliminar:
+    el servicio desaparece del formulario público pero las reservas existentes
+    conservan su referencia íntegra.
+    """
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    svc = client.post("/api/services/", headers=auth_headers, json=service_payload()).json()
+    svc_id = svc["id"]
+    client.post("/api/bookings/", json=booking_payload(servicio_id=svc_id))
+    # Desactivar en lugar de eliminar
+    resp = client.put(
+        f"/api/services/{svc_id}",
+        headers=auth_headers,
+        json={**service_payload(), "activo": False},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["activo"] is False
+
+
+@pytest.mark.integration
+def test_eliminar_servicio_sin_reservas_204(client, auth_headers):
+    """DELETE de un servicio sin reservas vinculadas devuelve 204.
+
+    Verifica que la FK no bloquea borrados legítimos (sin reservas).
+    """
+    svc = client.post("/api/services/", headers=auth_headers, json=service_payload()).json()
+    resp = client.delete(f"/api/services/{svc['id']}", headers=auth_headers)
+    assert resp.status_code == 204
