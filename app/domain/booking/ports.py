@@ -48,8 +48,9 @@ class IBookingRepository(ABC):
         """Soft-delete: marca la reserva como cancelada."""
 
     @abstractmethod
-    def is_slot_available(self, fecha_hora: datetime) -> bool:
-        """True si no existe ninguna cita activa (no cancelada) en esa fecha+hora exacta."""
+    def is_slot_available(self, fecha_hora: datetime, duracion_minutos: int = 30) -> bool:
+        """True si el intervalo [fecha_hora, fecha_hora+duracion_minutos) no solapa
+        con ninguna cita activa existente."""
 
     @abstractmethod
     def get_slots_ocupados(self, fecha: date) -> List[datetime]:

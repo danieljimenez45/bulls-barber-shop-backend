@@ -17,6 +17,7 @@ class Booking:
     barbero: str = DEFAULT_BARBER
     notas: Optional[str] = None
     estado: str = "pendiente"
+    duracion_minutos: int = 30
     created_at: Optional[datetime] = None
     # B-22: soft-delete — None = activa, timestamp = eliminada
     deleted_at: Optional[datetime] = None

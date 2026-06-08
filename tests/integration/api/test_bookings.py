@@ -283,3 +283,102 @@ def test_cancelar_reserva_ya_eliminada_404(client, auth_headers, mocker):
     # Segundo delete → 404
     response = client.delete(f"/api/bookings/{booking_id}", headers=auth_headers)
     assert response.status_code == 404
+
+
+# ── Grid :00/:30 y solapamiento por duración ──────────────────────────────────
+
+@pytest.mark.integration
+def test_reserva_hora_fuera_de_grid_422(client):
+    """Hora con minutos que no son :00 ni :30 → 422."""
+    payload = booking_payload(fecha_hora="2030-12-01T10:15:00")
+    response = client.post("/api/bookings/", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_reserva_hora_en_punto_201(client, mocker):
+    """Hora :00 → aceptada."""
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    response = client.post("/api/bookings/", json=booking_payload(fecha_hora="2030-12-02T09:00:00"))
+    assert response.status_code == 201
+
+
+@pytest.mark.integration
+def test_reserva_hora_y_media_201(client, mocker):
+    """Hora :30 → aceptada."""
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+    response = client.post("/api/bookings/", json=booking_payload(fecha_hora="2030-12-02T09:30:00"))
+    assert response.status_code == 201
+
+
+@pytest.mark.integration
+def test_solapamiento_servicio_60_min_bloquea_slot_siguiente(client, auth_headers, mocker):
+    """Servicio de 60 min a las 10:00 debe bloquear el slot de 10:30."""
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+
+    # Crear servicio de 60 min
+    svc = client.post(
+        "/api/services/",
+        headers=auth_headers,
+        json={"nombre": "Corte Premium", "precio": 25.0, "duracion_minutos": 60,
+              "categoria": "corte", "activo": True, "orden": 0},
+    ).json()
+
+    # Reservar a las 10:00 con servicio de 60 min
+    r1 = client.post("/api/bookings/", json=booking_payload(
+        servicio_id=svc["id"], fecha_hora="2030-12-03T10:00:00"
+    ))
+    assert r1.status_code == 201
+
+    # Intentar reservar a las 10:30 (dentro de la ventana de 60 min) → 409
+    r2 = client.post("/api/bookings/", json=booking_payload(
+        servicio_id=svc["id"], fecha_hora="2030-12-03T10:30:00"
+    ))
+    assert r2.status_code == 409
+
+
+@pytest.mark.integration
+def test_solapamiento_slot_11_libre_tras_reserva_60_min(client, auth_headers, mocker):
+    """Servicio de 60 min a las 10:00 no debe bloquear el slot de 11:00."""
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+
+    svc = client.post(
+        "/api/services/",
+        headers=auth_headers,
+        json={"nombre": "Corte Premium", "precio": 25.0, "duracion_minutos": 60,
+              "categoria": "corte", "activo": True, "orden": 0},
+    ).json()
+
+    client.post("/api/bookings/", json=booking_payload(
+        servicio_id=svc["id"], fecha_hora="2030-12-04T10:00:00"
+    ))
+
+    # 11:00 debe estar libre
+    r = client.post("/api/bookings/", json=booking_payload(
+        servicio_id=svc["id"], fecha_hora="2030-12-04T11:00:00"
+    ))
+    assert r.status_code == 201
+
+
+@pytest.mark.integration
+def test_disponibilidad_expande_slots_por_duracion(client, auth_headers, mocker):
+    """get_disponibilidad devuelve 10:00 y 10:30 si hay un servicio de 60 min a las 10:00."""
+    mocker.patch("app.api.routers.bookings.SMTPBookingNotifier", return_value=mocker.Mock())
+
+    svc = client.post(
+        "/api/services/",
+        headers=auth_headers,
+        json={"nombre": "Corte Premium", "precio": 25.0, "duracion_minutos": 60,
+              "categoria": "corte", "activo": True, "orden": 0},
+    ).json()
+
+    client.post("/api/bookings/", json=booking_payload(
+        servicio_id=svc["id"], fecha_hora="2030-12-05T10:00:00"
+    ))
+
+    resp = client.get("/api/bookings/disponibilidad", params={"fecha": "2030-12-05"})
+    assert resp.status_code == 200
+    ocupados = resp.json()["slots_ocupados"]
+    horas = [s[11:16] for s in ocupados]  # extraer HH:MM del ISO string
+    assert "10:00" in horas
+    assert "10:30" in horas

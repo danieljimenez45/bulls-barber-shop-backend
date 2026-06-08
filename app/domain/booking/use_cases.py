@@ -22,7 +22,7 @@ class CreateBookingUseCase:
     def execute(self, booking: Booking) -> Booking:
         """Crea la reserva si el slot está libre; lanza SlotOcupado si no.
         Tras crear, dispara la notificación si hay notifier configurado."""
-        if not self._repo.is_slot_available(booking.fecha_hora):
+        if not self._repo.is_slot_available(booking.fecha_hora, booking.duracion_minutos):
             raise SlotOcupado(
                 f"El horario {booking.fecha_hora.strftime('%d/%m/%Y a las %H:%M')} "
                 "ya está reservado. Por favor elige otro horario."

@@ -7,9 +7,15 @@ soft-delete sin pérdida de datos históricos.
 delete() fija deleted_at = now(UTC) Y cambia estado a "cancelada", garantizando
 consistencia semántica: un turno eliminado queda también marcado como cancelado,
 lo que facilita auditorías e informes históricos que consulten la columna estado.
+
+Lógica de solapamiento (grid :00/:30):
+  Una nueva reserva en [T, T+D_new) solapa con una existente en [S, S+D_s) si:
+      S < T + D_new  AND  T < S + D_s
+  Esto garantiza que un servicio de 60 min reservado a las 10:00 bloquea
+  también el slot de las 10:30.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy import func
@@ -18,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.booking.entity import Booking
 from app.domain.booking.ports import BookingNotFound, IBookingRepository, SlotOcupado
-from app.domain.booking.rules import BOOKING_ACTIVE_STATES
+from app.domain.booking.rules import BOOKING_ACTIVE_STATES, SLOT_INTERVAL_MINUTES
 from app.infrastructure.persistence.orm.booking import BookingORM
 
 
@@ -38,6 +44,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             email=orm.email,
             servicio_id=orm.servicio_id,
             servicio_nombre=orm.servicio_nombre,
+            duracion_minutos=orm.duracion_minutos,
             fecha_hora=orm.fecha_hora,
             barbero=orm.barbero,
             notas=orm.notas,
@@ -55,7 +62,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
     # ── Puerto ────────────────────────────────────────────────────────────────
 
     def create(self, booking: Booking) -> Booking:
-        if not self.is_slot_available(booking.fecha_hora):
+        if not self.is_slot_available(booking.fecha_hora, booking.duracion_minutos):
             raise SlotOcupado(
                 f"El horario {booking.fecha_hora.strftime('%d/%m/%Y a las %H:%M')} "
                 "ya está reservado. Por favor elige otro horario."
@@ -66,6 +73,7 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             email=booking.email,
             servicio_id=booking.servicio_id,
             servicio_nombre=booking.servicio_nombre,
+            duracion_minutos=booking.duracion_minutos,
             fecha_hora=booking.fecha_hora,
             barbero=booking.barbero,
             notas=booking.notas,
@@ -145,25 +153,56 @@ class SQLAlchemyBookingRepository(IBookingRepository):
         orm.deleted_at = datetime.now(timezone.utc)
         self._session.commit()
 
-    def is_slot_available(self, fecha_hora: datetime) -> bool:
-        """True si no hay cita pendiente/confirmada activa en ese instante."""
-        count = (
-            self._active(self._session.query(func.count(BookingORM.id)))
-            .filter(
-                BookingORM.fecha_hora == fecha_hora,
-                BookingORM.estado.in_(tuple(BOOKING_ACTIVE_STATES)),
+    def is_slot_available(self, fecha_hora: datetime, duracion_minutos: int = 30) -> bool:
+        """True si [fecha_hora, fecha_hora+duracion_minutos) no solapa con ninguna
+        cita activa existente.
+
+        Condición de solapamiento entre [T, T+D_new) y [S, S+D_s):
+            S < T + D_new  AND  T < S + D_s
+
+        SQLite no soporta aritmética de columnas con timedelta, así que el primer
+        filtro (S < T+D_new) se aplica en SQL y la condición completa se valida
+        en Python con el conjunto reducido de candidatos.
+        """
+        # Normalizar a naive para comparar con los valores almacenados en SQLite.
+        fh = fecha_hora.replace(tzinfo=None) if fecha_hora.tzinfo else fecha_hora
+        nueva_fin = fh + timedelta(minutes=duracion_minutos)
+
+        # Candidatos: reservas activas que empiezan antes del fin de la nueva reserva
+        # y dentro de una ventana razonable (ningún servicio dura más de 4 h).
+        window_start = fh - timedelta(hours=4)
+        candidates = (
+            self._active(
+                self._session.query(BookingORM.fecha_hora, BookingORM.duracion_minutos)
             )
-            .scalar()
-            or 0
+            .filter(
+                BookingORM.estado.in_(tuple(BOOKING_ACTIVE_STATES)),
+                BookingORM.fecha_hora >= window_start,
+                BookingORM.fecha_hora < nueva_fin,
+            )
+            .all()
         )
-        return count == 0
+
+        for s, d_s in candidates:
+            s_naive = s.replace(tzinfo=None) if s.tzinfo else s
+            existing_fin = s_naive + timedelta(minutes=d_s)
+            # Overlap: S < T+D_new  AND  T < S+D_s
+            if s_naive < nueva_fin and fh < existing_fin:
+                return False
+        return True
 
     def get_slots_ocupados(self, fecha: date) -> list[datetime]:
-        """Devuelve horas con reserva pendiente o confirmada en la fecha dada."""
+        """Devuelve todos los slots de 30 min bloqueados en la fecha dada.
+
+        Para cada reserva activa, expande sus slots ocupados según su duración:
+        una reserva de 60 min a las 10:00 bloquea {10:00, 10:30}.
+        """
         inicio = datetime.combine(fecha, datetime.min.time())
-        fin = datetime.combine(fecha, datetime.max.time())
+        fin    = datetime.combine(fecha, datetime.max.time())
         rows = (
-            self._active(self._session.query(BookingORM.fecha_hora))
+            self._active(
+                self._session.query(BookingORM.fecha_hora, BookingORM.duracion_minutos)
+            )
             .filter(
                 BookingORM.fecha_hora >= inicio,
                 BookingORM.fecha_hora <= fin,
@@ -171,7 +210,13 @@ class SQLAlchemyBookingRepository(IBookingRepository):
             )
             .all()
         )
-        return [r.fecha_hora for r in rows]
+        slots: set[datetime] = set()
+        interval = timedelta(minutes=SLOT_INTERVAL_MINUTES)
+        for fh, dur in rows:
+            n_slots = max(1, -(-dur // SLOT_INTERVAL_MINUTES))  # ceil division
+            for i in range(n_slots):
+                slots.add(fh + i * interval)
+        return sorted(slots)
 
     def list_by_date_range(self, desde: date, hasta: date) -> List[Booking]:
         """

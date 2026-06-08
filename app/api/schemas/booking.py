@@ -7,7 +7,12 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.constants import DEFAULT_BARBER
-from app.domain.booking.rules import FechaEnPasado, assert_future_datetime
+from app.domain.booking.rules import (
+    FechaEnPasado,
+    SlotFueraDeGrid,
+    assert_future_datetime,
+    assert_slot_en_grid,
+)
 
 # Teléfonos españoles: móviles (6/7) y fijos (8/9), 9 dígitos en total.
 # Admite opcionalmente el prefijo internacional +34 o 0034.
@@ -55,10 +60,14 @@ class BookingCreate(BaseModel):
 
     @field_validator("fecha_hora")
     @classmethod
-    def fecha_debe_ser_futura(cls, v: datetime) -> datetime:
+    def fecha_debe_ser_futura_y_en_grid(cls, v: datetime) -> datetime:
         try:
             assert_future_datetime(v)
         except FechaEnPasado as exc:
+            raise ValueError(str(exc)) from exc
+        try:
+            assert_slot_en_grid(v)
+        except SlotFueraDeGrid as exc:
             raise ValueError(str(exc)) from exc
         return v
 
@@ -86,6 +95,7 @@ class BookingOut(BaseModel):
     email: Optional[str] = None
     servicio_id: int
     servicio_nombre: Optional[str] = None
+    duracion_minutos: int = 30
     fecha_hora: datetime
     barbero: str
     notas: Optional[str] = None

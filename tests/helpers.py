@@ -6,9 +6,11 @@ Centraliza valores por defecto para evitar divergencias entre módulos de test.
 
 from datetime import datetime
 
-# Slots futuros estables (evitan colisiones con datos reales)
-FUTURE_SLOT = "2030-12-01T10:00:00"
+# Slots futuros estables (evitan colisiones con datos reales).
+# Todos en :00 o :30 para cumplir la validación del grid.
+FUTURE_SLOT   = "2030-12-01T10:00:00"
 FUTURE_SLOT_2 = "2030-12-01T11:00:00"
+FUTURE_SLOT_3 = "2030-12-01T10:30:00"
 
 
 def booking_payload(**kwargs) -> dict:

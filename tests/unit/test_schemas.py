@@ -1,4 +1,4 @@
-"""Tests unitarios de los schemas Pydantic de entrada.
+"""Tests unitarios de los schemas Pydantic de entrada y de las reglas de grid.
 
 Verifica que BookingCreate y ReviewCreate:
   - Aceptan payloads válidos.
@@ -13,12 +13,14 @@ from pydantic import ValidationError
 
 from app.api.schemas.booking import BookingCreate, BookingUpdate
 from app.api.schemas.review import ReviewCreate
+from app.domain.booking.rules import SlotFueraDeGrid, assert_slot_en_grid
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def future_dt(hours: int = 2) -> datetime:
-    """Devuelve un datetime UTC con timezone en el futuro."""
-    return datetime.now(timezone.utc) + timedelta(hours=hours)
+    """Devuelve un datetime UTC con timezone en el futuro, siempre en :00 para cumplir el grid."""
+    dt = datetime.now(timezone.utc) + timedelta(hours=hours)
+    return dt.replace(minute=0, second=0, microsecond=0)
 
 
 def valid_booking(**overrides) -> dict:
@@ -247,3 +249,51 @@ class TestReviewCreateInvalidos:
     def test_comentario_demasiado_largo(self):
         with pytest.raises(ValidationError):
             ReviewCreate(**valid_review(comentario="x" * 1001))
+
+
+# ── assert_slot_en_grid — regla de dominio ────────────────────────────────────
+
+class TestAssertSlotEnGrid:
+    def test_minuto_00_valido(self):
+        assert_slot_en_grid(datetime(2030, 6, 1, 10, 0))  # no lanza
+
+    def test_minuto_30_valido(self):
+        assert_slot_en_grid(datetime(2030, 6, 1, 10, 30))  # no lanza
+
+    def test_minuto_15_invalido(self):
+        with pytest.raises(SlotFueraDeGrid):
+            assert_slot_en_grid(datetime(2030, 6, 1, 10, 15))
+
+    def test_minuto_45_invalido(self):
+        with pytest.raises(SlotFueraDeGrid):
+            assert_slot_en_grid(datetime(2030, 6, 1, 10, 45))
+
+    def test_minuto_1_invalido(self):
+        with pytest.raises(SlotFueraDeGrid):
+            assert_slot_en_grid(datetime(2030, 6, 1, 10, 1))
+
+
+# ── BookingCreate — validación de grid en fecha_hora ─────────────────────────
+
+class TestBookingCreateGrid:
+    def test_hora_en_punto_valida(self):
+        dt = (datetime.now(timezone.utc) + timedelta(hours=2)).replace(
+            minute=0, second=0, microsecond=0
+        )
+        b = BookingCreate(**valid_booking(fecha_hora=dt.isoformat()))
+        assert b.fecha_hora.minute == 0
+
+    def test_hora_y_media_valida(self):
+        dt = (datetime.now(timezone.utc) + timedelta(hours=2)).replace(
+            minute=30, second=0, microsecond=0
+        )
+        b = BookingCreate(**valid_booking(fecha_hora=dt.isoformat()))
+        assert b.fecha_hora.minute == 30
+
+    def test_hora_fuera_de_grid_invalida(self):
+        dt = (datetime.now(timezone.utc) + timedelta(hours=2)).replace(
+            minute=15, second=0, microsecond=0
+        )
+        with pytest.raises(ValidationError) as exc_info:
+            BookingCreate(**valid_booking(fecha_hora=dt.isoformat()))
+        assert ":00" in str(exc_info.value) or ":30" in str(exc_info.value)

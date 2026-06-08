@@ -14,9 +14,10 @@ class BookingORM(Base):
     # FK → services.id con ON DELETE RESTRICT: no permite borrar un servicio
     # que tenga reservas vinculadas.  El PRAGMA foreign_keys=ON (database.py)
     # activa la comprobación en SQLite; PostgreSQL la aplica de forma nativa.
-    servicio_id     = Column(Integer, ForeignKey("services.id", ondelete="RESTRICT"), nullable=False)
-    servicio_nombre = Column(String(100),  nullable=True)
-    fecha_hora      = Column(DateTime,     nullable=False)
+    servicio_id       = Column(Integer, ForeignKey("services.id", ondelete="RESTRICT"), nullable=False)
+    servicio_nombre   = Column(String(100),  nullable=True)
+    duracion_minutos  = Column(Integer,      nullable=False, default=30)
+    fecha_hora        = Column(DateTime,     nullable=False)
     barbero         = Column(String(100),  nullable=True, default="Cualquier barbero")
     notas           = Column(Text,         nullable=True)
     estado          = Column(String(20),   default="pendiente")

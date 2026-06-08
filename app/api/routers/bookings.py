@@ -86,6 +86,7 @@ def crear_reserva(
         email=data.email,
         servicio_id=service.id,
         servicio_nombre=service.nombre,
+        duracion_minutos=service.duracion_minutos,
         fecha_hora=data.fecha_hora,
         barbero=data.barbero or DEFAULT_BARBER,
         notas=data.notas,

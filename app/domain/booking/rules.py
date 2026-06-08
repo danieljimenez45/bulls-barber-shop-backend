@@ -4,9 +4,16 @@ from datetime import datetime, timezone
 
 BOOKING_ACTIVE_STATES = frozenset({"pendiente", "confirmada"})
 
+# Intervalo mínimo de reserva en minutos (granularidad del grid).
+SLOT_INTERVAL_MINUTES = 30
+
 
 class FechaEnPasado(Exception):
     """La fecha/hora de la reserva no es futura respecto a UTC."""
+
+
+class SlotFueraDeGrid(Exception):
+    """La hora de la reserva no cae en un slot válido (:00 o :30)."""
 
 
 def assert_future_datetime(fecha_hora: datetime, *, now: datetime | None = None) -> None:
@@ -16,3 +23,12 @@ def assert_future_datetime(fecha_hora: datetime, *, now: datetime | None = None)
         dt = dt.replace(tzinfo=timezone.utc)
     if dt <= ref:
         raise FechaEnPasado("La fecha y hora deben ser futuras.")
+
+
+def assert_slot_en_grid(fecha_hora: datetime) -> None:
+    """Lanza SlotFueraDeGrid si los minutos no son 0 ni 30."""
+    if fecha_hora.minute not in (0, 30):
+        raise SlotFueraDeGrid(
+            f"Los turnos solo pueden reservarse en punto (:00) o y media (:30). "
+            f"Hora recibida: {fecha_hora.strftime('%H:%M')}."
+        )
