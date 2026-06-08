@@ -119,3 +119,56 @@ def test_list_por_categoria(db_session):
     cortes = repo.list(solo_activos=True, categoria="corte")
     assert len(cortes) == 1
     assert cortes[0].categoria == "corte"
+
+
+# ── Integridad FK: bookings → services ────────────────────────────────────────
+
+@pytest.mark.integration
+def test_delete_servicio_con_reservas_lanza_service_has_bookings(db_session):
+    """Eliminar un servicio con reservas vinculadas lanza ServiceHasBookings.
+
+    La FK bookings.servicio_id → services.id ON DELETE RESTRICT (migración 0003)
+    provoca un IntegrityError en SQLite (PRAGMA foreign_keys=ON está activo
+    globalmente por el listener en database.py).  El repositorio lo captura y
+    relanza como ServiceHasBookings para mantener la excepción dentro del dominio.
+    """
+    from datetime import datetime
+
+    from app.domain.service.ports import ServiceHasBookings
+    from app.infrastructure.persistence.orm.booking import BookingORM
+
+    repo = SQLAlchemyServiceRepository(db_session)
+    svc = repo.create(_service(nombre="Servicio con Reservas"))
+
+    # Crear una reserva que referencia el servicio directamente en el ORM
+    # (saltamos el use case para aislar el test al repositorio)
+    booking_orm = BookingORM(
+        nombre_cliente="Test",
+        telefono="600000001",
+        servicio_id=svc.id,
+        servicio_nombre=svc.nombre,
+        duracion_minutos=30,
+        fecha_hora=datetime(2030, 12, 1, 10, 0),
+        estado="pendiente",
+    )
+    db_session.add(booking_orm)
+    db_session.commit()
+
+    # Intentar borrar el servicio debe lanzar ServiceHasBookings
+    with pytest.raises(ServiceHasBookings):
+        repo.delete(svc.id)
+
+
+@pytest.mark.integration
+def test_delete_servicio_sin_reservas_exito(db_session):
+    """Eliminar un servicio sin reservas vinculadas funciona sin excepciones.
+
+    Verifica que la FK no bloquea borrados legítimos.
+    """
+    repo = SQLAlchemyServiceRepository(db_session)
+    svc = repo.create(_service(nombre="Sin Reservas"))
+
+    # Debe completarse sin excepción
+    repo.delete(svc.id)
+
+    assert repo.get_by_id(svc.id) is None
