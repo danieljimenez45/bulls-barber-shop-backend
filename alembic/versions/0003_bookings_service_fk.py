@@ -1,7 +1,7 @@
 """Añade FK bookings.servicio_id → services.id con ON DELETE RESTRICT.
 
 Revision ID: 0003
-Revises: 0001
+Revises: 0002
 Create Date: 2026-06-08 00:00:00.000000
 
 Propósito:
@@ -27,7 +27,7 @@ from alembic import op
 
 # ── Identificadores de revisión ────────────────────────────────────────────────
 revision: str = "0003"
-down_revision: Union[str, None] = "0001"
+down_revision: Union[str, None] = "0002"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
