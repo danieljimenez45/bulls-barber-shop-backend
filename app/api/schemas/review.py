@@ -3,10 +3,15 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ReviewCreate(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,  # elimina espacios al inicio/fin de strings
+        extra="forbid",             # rechaza cualquier campo no declarado → 422
+    )
+
     nombre: str = Field(
         ...,
         min_length=2,
@@ -24,6 +29,17 @@ class ReviewCreate(BaseModel):
         max_length=1000,
         description="Texto libre opcional de la reseña.",
     )
+
+    @field_validator("comentario")
+    @classmethod
+    def comentario_no_vacio(cls, v: Optional[str]) -> Optional[str]:
+        # str_strip_whitespace ya limpió espacios; si queda una cadena vacía
+        # la tratamos igual que None para evitar comentarios de relleno.
+        if v is not None and len(v) == 0:
+            return None
+        if v is not None and len(v) < 10:
+            raise ValueError("El comentario debe tener al menos 10 caracteres.")
+        return v
 
 
 class ReviewOut(BaseModel):

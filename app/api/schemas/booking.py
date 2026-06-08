@@ -1,15 +1,25 @@
 """Schemas Pydantic para el dominio de reservas."""
 
+import re
 from datetime import date, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.constants import DEFAULT_BARBER
 from app.domain.booking.rules import FechaEnPasado, assert_future_datetime
 
+# Teléfonos españoles: móviles (6/7) y fijos (8/9), 9 dígitos en total.
+# Admite opcionalmente el prefijo internacional +34 o 0034.
+_TELEFONO_RE = re.compile(r"^(?:\+34|0034)?[6789]\d{8}$")
+
 
 class BookingCreate(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,  # elimina espacios al inicio/fin de strings
+        extra="forbid",             # rechaza cualquier campo no declarado → 422
+    )
+
     nombre_cliente: str = Field(
         ...,
         min_length=2,
@@ -18,9 +28,8 @@ class BookingCreate(BaseModel):
     )
     telefono: str = Field(
         ...,
-        min_length=6,
-        max_length=20,
-        description="Teléfono de contacto (solo dígitos y guiones).",
+        description="Teléfono español de 9 dígitos (móvil 6/7 o fijo 8/9). "
+                    "Admite prefijo +34 o 0034.",
     )
     email: Optional[EmailStr] = Field(
         None,
@@ -33,6 +42,17 @@ class BookingCreate(BaseModel):
     barbero: Optional[str] = Field(DEFAULT_BARBER, max_length=100)
     notas: Optional[str] = Field(None, max_length=500)
 
+    @field_validator("telefono")
+    @classmethod
+    def telefono_valido(cls, v: str) -> str:
+        # str_strip_whitespace ya eliminó espacios extremos; comprobamos formato.
+        if not _TELEFONO_RE.match(v):
+            raise ValueError(
+                "El teléfono debe tener 9 dígitos y empezar por 6, 7, 8 o 9 "
+                "(admite prefijo +34 o 0034)."
+            )
+        return v
+
     @field_validator("fecha_hora")
     @classmethod
     def fecha_debe_ser_futura(cls, v: datetime) -> datetime:
@@ -44,6 +64,11 @@ class BookingCreate(BaseModel):
 
 
 class BookingUpdate(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
     # Solo se aceptan transiciones de estado vía PATCH.
     # "cancelada" se excluye deliberadamente: la cancelación debe hacerse
     # siempre a través de DELETE /api/bookings/{id}, que ejecuta el soft-delete
