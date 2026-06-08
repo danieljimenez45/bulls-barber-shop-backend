@@ -228,3 +228,48 @@ def test_list_by_date_range_filtra_correctamente(db_session):
 
     result = repo.list_by_date_range(date(2025, 8, 1), date(2025, 8, 31))
     assert len(result) == 2
+
+
+# ── is_slot_available: solapamiento por duración ──────────────────────────────
+
+@pytest.mark.integration
+def test_is_slot_available_duracion_60_bloquea_slot_siguiente(db_session):
+    """Reserva de 60 min a las 10:00 → 10:30 no disponible."""
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0), duracion_minutos=60))
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 30), 30) is False
+
+
+@pytest.mark.integration
+def test_is_slot_available_duracion_60_no_bloquea_hora_siguiente(db_session):
+    """Reserva de 60 min a las 10:00 → 11:00 sí disponible."""
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0), duracion_minutos=60))
+    assert repo.is_slot_available(datetime(2025, 8, 15, 11, 0), 30) is True
+
+
+@pytest.mark.integration
+def test_is_slot_available_duracion_30_no_bloquea_slot_siguiente(db_session):
+    """Reserva de 30 min a las 10:00 → 10:30 sí disponible."""
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0), duracion_minutos=30))
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 30), 30) is True
+
+
+@pytest.mark.integration
+def test_is_slot_available_nueva_reserva_60_solapa_con_existente_30(db_session):
+    """Nueva reserva de 60 min a las 10:30 solapa con una de 30 min a las 10:00 ya confirmada."""
+    # Existente: [10:00, 10:30)
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0), duracion_minutos=30))
+    # Nueva intenta cubrir [10:30, 11:30) → no solapa con [10:00, 10:30) → libre
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 30), 60) is True
+
+
+@pytest.mark.integration
+def test_is_slot_available_nueva_30_solapa_con_existente_en_su_ventana(db_session):
+    """Nueva reserva de 30 min a las 10:30 solapa con existente de 60 min a las 10:00."""
+    # Existente: [10:00, 11:00). Nueva: [10:30, 11:00) → solapamiento
+    repo = SQLAlchemyBookingRepository(db_session)
+    repo.create(domain_booking(fecha_hora=datetime(2025, 8, 15, 10, 0), duracion_minutos=60))
+    assert repo.is_slot_available(datetime(2025, 8, 15, 10, 30), 30) is False

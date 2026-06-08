@@ -14,7 +14,7 @@ venv/
 .venv/
 env/
 .env
-.env.example
+# .env.example SÍ se versiona (plantilla de referencia)
 # Base de datos SQLite
 *.db
 *.sqlite3

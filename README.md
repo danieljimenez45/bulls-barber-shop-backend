@@ -83,9 +83,11 @@ Las variables de entorno de test se inyectan automáticamente desde `pytest.ini`
 ## Reglas de negocio — reservas
 
 - **Fecha futura:** `fecha_hora` debe ser estrictamente posterior a la hora actual en **UTC**. Las fechas sin zona horaria se interpretan como UTC.
+- **Grid de slots:** `fecha_hora` debe caer en `:00` o `:30` exactamente (p.ej. `10:00` o `10:30`). Cualquier otro minuto devuelve 422.
+- **Solapamiento por duración:** el intervalo bloqueado es `[fecha_hora, fecha_hora + duracion_minutos)`. Un servicio de 60 min a las 10:00 bloquea también el slot de 10:30. La duración se toma automáticamente del servicio en BD.
 - **Slot ocupado:** solo las reservas en estado `pendiente` o `confirmada` (y no eliminadas con soft-delete) bloquean un horario. `cancelada` y `completada` no impiden una nueva reserva en el mismo instante.
 - **Cancelar:** usar siempre `DELETE /api/bookings/{id}`. No se admite `PATCH` con `estado=cancelada` (el soft-delete y `deleted_at` solo aplican vía DELETE).
-- **Servicio:** al crear una reserva, el nombre del servicio se toma de la base de datos según `servicio_id`; el cliente no puede imponer otro nombre en el payload.
+- **Servicio:** al crear una reserva, el nombre y la duración del servicio se toman de la base de datos según `servicio_id`; el cliente no puede imponer otros valores en el payload.
 - **Concurrencia:** comprobación previa del slot + índice único parcial en BD; colisión → HTTP 409.
 
 ### Rate limiting detrás de proxy
@@ -170,7 +172,7 @@ backend/
 │       ├── dependencies/         # Inyección de dependencias FastAPI
 │       ├── routers/              # Endpoints HTTP
 │       └── schemas/              # Esquemas Pydantic de entrada/salida
-├── migrations/                   # Migraciones Alembic
+├── alembic/                      # Migraciones Alembic
 ├── tests/
 │   ├── conftest.py               # Fixtures compartidos (client, db_session, auth_headers…)
 │   ├── unit/
@@ -183,7 +185,7 @@ backend/
 └── pytest.ini
 ```
 
-`.env` y `.env.example` son locales (en `.gitignore`) y no forman parte del repositorio.
+`.env` es local (en `.gitignore`) y no se sube al repositorio. `.env.example` sí se versiona como referencia.
 
 ---
 
